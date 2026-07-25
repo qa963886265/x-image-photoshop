@@ -1,0 +1,63 @@
+name: Publish plugin release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "release/latest.json"
+      - "release/*.zip"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-plugin-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read release information
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$(jq -r '.tag' release/latest.json)"
+          title="$(jq -r '.title' release/latest.json)"
+          asset="$(jq -r '.asset' release/latest.json)"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+          if [[ "$asset" != "$(basename "$asset")" || "$asset" != *.zip ]]; then
+            echo "Invalid release asset name: $asset" >&2
+            exit 1
+          fi
+          if [[ ! -f "release/$asset" ]]; then
+            echo "Missing release/$asset" >&2
+            exit 1
+          fi
+          jq -r '.notes' release/latest.json > release-notes.md
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          TITLE: ${{ steps.release.outputs.title }}
+          ASSET: ${{ steps.release.outputs.asset }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
+            gh release upload "$TAG" "release/$ASSET" --clobber
+          else
+            gh release create "$TAG" "release/$ASSET" --target "$GITHUB_SHA" --title "$TITLE" --notes-file release-notes.md
+          fi
