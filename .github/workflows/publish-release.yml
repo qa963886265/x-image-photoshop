@@ -59,7 +59,7 @@ jobs:
             gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
             while IFS= read -r old_asset; do
               if [[ -n "$old_asset" && "$old_asset" != "$ASSET" ]]; then
-                gh release delete-asset "$TAG" "$old_asset" --yes
+                gh release delete-asset "$TAG" --yes -- "$old_asset"
               fi
             done < <(gh release view "$TAG" --json assets --jq '.assets[].name')
             gh release upload "$TAG" "release/$ASSET" --clobber
