@@ -57,6 +57,11 @@ jobs:
           set -euo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
+            while IFS= read -r old_asset; do
+              if [[ -n "$old_asset" && "$old_asset" != "$ASSET" ]]; then
+                gh release delete-asset "$TAG" "$old_asset" --yes
+              fi
+            done < <(gh release view "$TAG" --json assets --jq '.assets[].name')
             gh release upload "$TAG" "release/$ASSET" --clobber
           else
             gh release create "$TAG" "release/$ASSET" --target "$GITHUB_SHA" --title "$TITLE" --notes-file release-notes.md
