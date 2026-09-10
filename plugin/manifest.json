@@ -1,0 +1,101 @@
+{
+  "id": "llai.psapi.selectioneditor",
+  "name": " ",
+  "version": "1.10.0",
+  "main": "index.html",
+  "manifestVersion": 6,
+  "host": {
+    "app": "PS",
+    "minVersion": "26.9.0",
+    "data": {
+      "apiVersion": 2
+    }
+  },
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "llai.psapi.selection.panel",
+      "label": {
+        "default": " "
+      },
+      "minimumSize": {
+        "width": 440,
+        "height": 500
+      },
+      "maximumSize": {
+        "width": 440,
+        "height": 500
+      },
+      "preferredDockedSize": {
+        "width": 440,
+        "height": 500
+      },
+      "preferredFloatingSize": {
+        "width": 440,
+        "height": 500
+      },
+      "icons": [
+        {
+          "width": 24,
+          "height": 24,
+          "path": "assets/animal-island-ui/images/brand-fruit-logo.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "darkest",
+            "dark",
+            "medium",
+            "lightest",
+            "light",
+            "all"
+          ]
+        }
+      ]
+    }
+  ],
+  "requiredPermissions": {
+    "clipboard": "readAndWrite",
+    "network": {
+      "domains": [
+        "https://www.katuai.cn",
+        "https://ark.cn-beijing.volces.com",
+        "https://ark-acg-cn-beijing.tos-cn-beijing.volces.com",
+        "https://cdn.katuai.cn",
+        "https://cdn.lingdong5.com",
+        "https://api.github.com",
+        "https://raw.githubusercontent.com",
+        "https://cms-assets.youmind.com"
+      ]
+    },
+    "localFileSystem": "request",
+    "launchProcess": {
+      "extensions": [
+        ".exe"
+      ]
+    }
+  },
+  "icons": [
+    {
+      "width": 48,
+      "height": 48,
+      "path": "assets/animal-island-ui/images/brand-fruit-logo.png",
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "darkest",
+        "dark",
+        "medium",
+        "lightest",
+        "light",
+        "all"
+      ],
+      "species": [
+        "pluginList"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# Tag archives are downloaded by the updater; omit nested release packages.
+/release/*.zip export-ignore

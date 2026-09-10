@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title></title>
+  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.0" />
+  <style>
+    #referenceList > #referenceAddWrap {
+      position: relative !important;
+      display: block !important;
+      flex: 0 0 68px !important;
+      width: 68px !important;
+      min-width: 68px !important;
+      max-width: 68px !important;
+      height: 92px !important;
+      min-height: 92px !important;
+      max-height: 92px !important;
+      margin: 0 1px 0 0 !important;
+      border-radius: 6px !important;
+      overflow: hidden !important;
+    }
+
+    #referenceList > #referenceAddWrap > #referenceAdd {
+      display: block !important;
+      width: 68px !important;
+      min-width: 68px !important;
+      max-width: 68px !important;
+      height: 92px !important;
+      min-height: 92px !important;
+      max-height: 92px !important;
+      border-radius: 6px !important;
+    }
+
+    #referenceList > #referenceAddWrap.is-menu-open {
+      overflow: visible !important;
+    }
+
+    #referenceList:not(.has-references)::before,
+    #referenceList:not(.has-references)::after,
+    #referenceQuickActions,
+    #referenceQuickActions * {
+      display: none !important;
+      content: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  </style>
+  </head>
+  <body>
+    <main class="app-shell" style="padding-top:0;margin-top:0;">
+      <div class="plugin-identity" style="margin-top:0;">
+        <div id="brandSettingsOpen" class="brand-lockup" role="button" tabindex="0" title="检查更新" aria-label="检查即杏智绘更新" style="position:absolute;left:5px;top:50%;transform:translateY(-50%);width:88px;">
+          <span class="brand-icon-shell" aria-hidden="true">
+            <img class="brand-icon" src="assets/animal-island-ui/images/brand-fruit-logo.png" alt="" />
+          </span>
+          <div class="brand-copy">
+            <strong id="pluginName" class="plugin-name">即杏智绘</strong>
+            <span id="pluginVersion" class="plugin-version" role="button" tabindex="0" title="检查更新">v1.10.0</span>
+          </div>
+        </div>
+        <div id="notificationLayer" class="notification-layer is-hidden" aria-live="polite">
+          <div id="status" class="status-bar is-hidden" role="status">
+            <span id="statusIcon" class="status-dot" aria-hidden="true">i</span>
+            <div class="status-copy">
+              <strong id="statusTitle">准备就绪</strong>
+              <small id="statusDetail">请先在 Photoshop 中框选要修改的区域</small>
+            </div>
+            <span id="statusClose" class="status-close" role="button" tabindex="0" aria-label="关闭通知">X</span>
+          </div>
+        </div>
+        <nav id="workspaceTabs" class="workspace-tabs" aria-label="工作页面">
+          <span class="workspace-tab-shell is-active"><img class="workspace-shell-icon" src="assets/animal-island-ui/images/menu-fruit-editor.png" alt="" /><span class="workspace-shell-label workspace-shell-label-editor">图像编辑</span><button id="editorWorkspaceTab" class="workspace-tab is-active" type="button" aria-selected="true" aria-label="图像编辑"></button></span>
+          <span class="workspace-tab-shell workspace-tab-shell-outfit" hidden aria-hidden="true"><img class="workspace-shell-icon" src="assets/animal-island-ui/images/menu-fruit-outfit.png" alt="" /><span class="workspace-shell-label workspace-shell-label-outfit">模特换装</span><button id="outfitWorkspaceTab" class="workspace-tab" type="button" aria-selected="false" aria-label="模特换装" tabindex="-1"></button></span>
+          <span class="workspace-tab-shell"><img class="workspace-shell-icon" src="assets/animal-island-ui/images/menu-fruit-arena.png" alt="" /><span class="workspace-shell-label workspace-shell-label-library">词库</span><button id="styleLibraryOpen" class="workspace-tab style-library-open" type="button" aria-selected="false" aria-label="打开 GPT-Image2 词库" title="词库"></button></span>
+          <span class="workspace-tab-shell"><img class="workspace-shell-icon" src="assets/animal-island-ui/images/menu-fruit-settings.png" alt="" /><span class="workspace-shell-label workspace-shell-label-settings">设置</span><button id="settingsWorkspaceTab" class="workspace-tab" type="button" aria-selected="false" aria-label="设置"></button></span>
+        </nav>
+      </div>
+      <div id="editorWorkspace" class="workspace-view">
+
+      <section class="workflow-card source-card">
+        <div id="referenceStrip" class="reference-strip">
+          <div id="referenceList" class="reference-list" aria-live="polite">
+            <span id="referenceEmptyHint" class="reference-hint">点击左侧添加参考图<br /><small>支持选区、图层或本地图片，最多 6 张</small></span>
+            <div id="referenceAddWrap" class="reference-add-wrap">
+            <button id="referenceAdd" class="reference-add" type="button" aria-label="添加参考图" aria-expanded="false" title="选择参考图来源">
+              <span class="reference-add-symbol" aria-hidden="true"></span>
+              <span id="referenceCount" class="reference-add-count">0 / 6</span>
+            </button>
+            <div id="referenceSourceMenu" class="reference-source-menu is-menu-hidden" role="menu" aria-label="参考图来源">
+              <button id="referenceFromSelection" type="button" role="menuitem">选区</button>
+              <button id="referenceFromLayer" type="button" role="menuitem">图层</button>
+              <button id="referenceFromLocal" type="button" role="menuitem">本地</button>
+            </div>
+            <div id="referenceQuickActions" class="reference-quick-actions" aria-label="参考图操作" style="display:none !important;">
+              <button id="referenceQuickLayer" class="reference-quick-button" type="button" style="position:absolute !important;top:8px !important;left:8px !important;right:8px !important;width:auto !important;height:24px !important;display:block !important;">图层</button>
+              <button id="referenceQuickSelection" class="reference-quick-button" type="button" style="position:absolute !important;top:40px !important;left:8px !important;right:8px !important;width:auto !important;height:24px !important;display:block !important;">选区</button>
+              <button id="referenceQuickClear" class="reference-quick-button reference-quick-clear" type="button" style="position:absolute !important;top:72px !important;left:8px !important;right:8px !important;width:auto !important;height:24px !important;display:block !important;">清空</button>
+            </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="workflow-card prompt-area prompt-card" aria-labelledby="promptHeading">
+        <div class="section-heading compact">
+          <h2 id="promptHeading"><span class="section-number" aria-hidden="true">02</span>提示词</h2>
+          <div id="promptMentionMenu" class="prompt-mention-menu is-hidden" role="listbox" aria-label="选择参考图标记"></div>
+          <span id="promptCount">0 / 20000 · Ctrl+Enter 运行</span>
+        </div>
+        <div class="prompt-editor-shell">
+          <textarea
+            id="prompt"
+            class="prompt-editor"
+            rows="5"
+            maxlength="20000"
+            placeholder="例如：保留主体产品，生成干净高级的电商主图背景"
+          ></textarea>
+          <textarea id="promptContinuationCapture" class="prompt-continuation-capture is-hidden" maxlength="20000" tabindex="-1" aria-label="继续输入提示词"></textarea>
+          <span id="promptContinuationCaret" class="prompt-continuation-caret is-hidden" aria-hidden="true"></span>
+        </div>
+        <div class="prompt-actions-row" aria-label="提示词工具">
+          <label id="precisionPlacementToggle" class="precision-row" for="precisionPlacement" role="switch" tabindex="0" aria-checked="true" title="精确放回原选区位置、尺寸和蒙版">
+            <input id="precisionPlacement" class="prompt-optimizer-input" type="checkbox" checked />
+            <span class="prompt-optimizer-switch" aria-hidden="true"><span class="prompt-optimizer-knob"></span></span>
+            <span class="precision-label">精确放回</span>
+          </label>
+          <div class="favorite-prompt-control">
+            <button id="favoritePrompt" class="utility-button prompt-tool-button" type="button" disabled>收藏</button>
+            <div class="prompt-library-slot">
+              <select id="promptLibrary" aria-label="收藏提示词" disabled>
+                <option value="">暂无收藏提示词</option>
+              </select>
+            </div>
+          </div>
+          <label id="maskFeatherControl" class="precision-row" for="maskFeatherEnabled" role="switch" tabindex="0" aria-checked="true" title="羽化蒙版：默认50px，可在设置中修改">
+            <input id="maskFeatherEnabled" class="prompt-optimizer-input" type="checkbox" checked />
+            <span class="prompt-optimizer-switch" aria-hidden="true"><span class="prompt-optimizer-knob"></span></span>
+            <span class="precision-label">羽化蒙版</span>
+          </label>
+
+        </div>
+      </section>
+
+      <section class="workflow-card output-card">
+        <div class="parameter-row">
+          <div class="parameter-field model-field">
+            <span>模型渠道</span>
+            <select id="modelChannel">
+              <option value="gpt-image-2.5-sunburst" selected>Image 2.5</option>
+              <option value="image-2">Image 2</option>
+              <option value="gm-3.1-flash-image-preview">Gemini Flash</option>
+              <option value="gm-3-pro-image-preview">Gemini Pro</option>
+            </select>
+          </div>
+
+          <div class="parameter-field ratio-field">
+            <span>工作模式 / 比例</span>
+            <select id="aspectRatio">
+              <option value="auto" selected>修图模式</option>
+              <option value="1:1">1:1</option>
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+              <option value="4:3">4:3</option>
+              <option value="3:4">3:4</option>
+              <option value="3:2">3:2</option>
+              <option value="2:3">2:3</option>
+              <option value="3:1">3:1</option>
+              <option value="1:3">1:3</option>
+              <option value="21:9">21:9</option>
+              <option value="9:21">9:21</option>
+              <option value="5:4">5:4</option>
+              <option value="4:5">4:5</option>
+            </select>
+          </div>
+
+          <div class="parameter-field resolution-field">
+            <span>分辨率</span>
+            <select id="resolution">
+              <option value="1K" selected>1K</option>
+              <option value="2K">2K</option>
+              <option value="4K">4K</option>
+            </select>
+          </div>
+
+          <div class="parameter-field count-field">
+            <span>生成数量</span>
+            <select id="generationCount">
+              <option value="1" selected>1 张</option>
+              <option value="2">2 张</option>
+              <option value="3">3 张</option>
+              <option value="4">4 张</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="primary-actions">
+          <button id="run" class="primary-button" type="button">运行</button>
+          <button id="editorClear" class="action-button" type="button">清空</button>
+          <button id="insert" class="action-button" type="button" disabled>插入图层</button>
+        </div>
+      </section>
+
+      </div>
+
+      <section id="outfitWorkspace" class="outfit-workspace workspace-view is-hidden" aria-label="创作工具" hidden aria-hidden="true">
+        <nav class="creative-tool-tabs" aria-label="创作工具菜单">
+          <button id="creativeOutfitTab" class="creative-tool-tab is-active" type="button" aria-selected="true">模特换装</button>
+          <button id="creativeProductTab" class="creative-tool-tab" type="button" aria-selected="false">商品主图 / 场景图</button>
+          <button id="creativePendingTabOne" class="creative-tool-tab" type="button" aria-selected="false">待添加</button>
+          <button id="creativePendingTabTwo" class="creative-tool-tab" type="button" aria-selected="false">待添加</button>
+        </nav>
+        <div id="outfitPrimaryActions" class="primary-actions outfit-primary-actions outfit-primary-actions-fixed">
+          <button id="outfitRun" class="primary-button" type="button">开始换装</button>
+          <button id="outfitStop" class="action-button" type="button" disabled>停止</button>
+          <button id="outfitInsert" class="action-button" type="button" disabled>插入图层</button>
+        </div>
+
+        <div id="creativeOutfitPanel">
+        <div class="outfit-metrics" aria-label="换装任务状态">
+          <div class="outfit-metric-card">
+            <span>模特姿势图</span>
+            <strong id="outfitTargetMetric">未获取</strong>
+            <small>选区、图层或本地添加</small>
+          </div>
+          <div class="outfit-metric-card">
+            <span>服装参考</span>
+            <strong id="outfitGarmentMetric">0 张</strong>
+            <small>选区、图层或本地添加</small>
+          </div>
+          <div class="outfit-metric-card">
+            <span>生成任务</span>
+            <strong id="outfitTaskMetric">0 个</strong>
+            <small>并发/历史查询</small>
+          </div>
+          <div class="outfit-metric-card">
+            <span>生成结果</span>
+            <strong id="outfitResultMetric">0 张</strong>
+            <small>下方历史可复用</small>
+          </div>
+        </div>
+
+        <section class="workflow-card outfit-source-card" aria-labelledby="outfitSourceHeading">
+          <div class="section-heading compact">
+            <h2 id="outfitSourceHeading"><span class="section-number" aria-hidden="true">01</span>换装素材</h2>
+            <span id="outfitReferenceCount" class="count-badge">0 张服装参考</span>
+          </div>
+          <div class="outfit-source-grid">
+            <div class="outfit-source-item is-target">
+              <div class="outfit-source-label">
+                <strong>模特姿势图</strong>
+                <span>必填 · 决定姿势与回填位置</span>
+              </div>
+              <div id="outfitTargetAddWrap" class="outfit-material-tile outfit-target-tile">
+                <img id="outfitTargetPreview" class="outfit-preview-image is-hidden" alt="模特姿势图预览" />
+                <button id="outfitCaptureTarget" class="reference-add outfit-material-add" type="button" aria-label="添加模特姿势图" aria-expanded="false" title="选择模特姿势图来源">
+                  <span id="outfitTargetEmpty" class="outfit-add-glyph" aria-hidden="true">＋</span>
+                </button>
+                <div id="outfitTargetSourceMenu" class="reference-source-menu outfit-material-menu is-menu-hidden" role="menu" aria-label="模特姿势图来源">
+                  <button id="outfitAddTargetSelection" type="button" role="menuitem">从选区获取</button>
+                  <button id="outfitAddTargetLayer" type="button" role="menuitem">从图层获取</button>
+                  <button id="outfitAddTargetLocal" type="button" role="menuitem">从本地添加</button>
+                </div>
+                <button id="outfitClearTarget" class="reference-remove outfit-material-remove is-hidden" type="button" aria-label="移除模特姿势图">×</button>
+              </div>
+            </div>
+
+            <div class="outfit-source-item is-face">
+              <div class="outfit-source-label">
+                <strong>模特人脸图</strong>
+                <span>必填 · 保持人物身份</span>
+              </div>
+              <div id="outfitFaceAddWrap" class="outfit-material-tile">
+                <img id="outfitFacePreview" class="outfit-preview-image is-hidden" alt="模特人脸图预览" />
+                <button id="outfitFaceAdd" class="reference-add outfit-material-add" type="button" aria-label="添加模特人脸图" aria-expanded="false" title="选择模特人脸图来源">
+                  <span id="outfitFaceEmpty" class="outfit-add-glyph" aria-hidden="true">＋</span>
+                </button>
+                <div id="outfitFaceSourceMenu" class="reference-source-menu outfit-material-menu is-menu-hidden" role="menu" aria-label="模特人脸图来源">
+                  <button id="outfitAddFaceSelection" type="button" role="menuitem">从选区获取</button>
+                  <button id="outfitAddFaceLayer" type="button" role="menuitem">从图层获取</button>
+                  <button id="outfitAddFaceLocal" type="button" role="menuitem">从本地添加</button>
+                </div>
+                <button id="outfitClearFace" class="reference-remove outfit-material-remove is-hidden" type="button" aria-label="移除模特人脸图">×</button>
+              </div>
+            </div>
+
+            <div class="outfit-source-item outfit-background-reference is-background">
+              <div class="outfit-source-label outfit-background-label">
+                <strong>场景背景图</strong>
+                <span id="outfitBackgroundOrdinal">选填 · 生成时作为附图4</span>
+              </div>
+              <div id="outfitBackgroundAddWrap" class="outfit-material-tile outfit-background-tile">
+                <img id="outfitBackgroundPreview" class="outfit-preview-image is-hidden" alt="场景背景图预览" />
+                <button id="outfitBackgroundAdd" class="reference-add outfit-material-add" type="button" aria-label="添加场景背景图" aria-expanded="false" title="选择场景背景图来源">
+                  <span id="outfitBackgroundEmpty" class="outfit-add-glyph" aria-hidden="true">＋</span>
+                </button>
+                <div id="outfitBackgroundSourceMenu" class="reference-source-menu outfit-material-menu is-menu-hidden" role="menu" aria-label="场景背景图来源">
+                  <button id="outfitAddBackgroundSelection" type="button" role="menuitem">从选区获取</button>
+                  <button id="outfitAddBackgroundLayer" type="button" role="menuitem">从图层获取</button>
+                  <button id="outfitAddBackgroundLocal" type="button" role="menuitem">从本地添加</button>
+                </div>
+                <button id="outfitClearBackground" class="reference-remove outfit-material-remove is-hidden" type="button" aria-label="移除场景背景图">×</button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <section class="workflow-card outfit-settings-card" aria-labelledby="outfitSettingsHeading">
+          <div class="section-heading compact">
+            <h2 id="outfitSettingsHeading"><span class="section-number" aria-hidden="true">02</span>服饰参考方式</h2>
+          </div>
+
+          <div class="outfit-type-row" role="radiogroup" aria-label="换装范围">
+            <button class="outfit-type-option is-selected" type="button" role="radio" data-outfit-mode="full" aria-checked="true">
+              <span class="outfit-type-radio-dot" aria-hidden="true"></span>
+              <span class="outfit-type-copy"><strong>全身服装</strong></span>
+            </button>
+            <button class="outfit-type-option" type="button" role="radio" data-outfit-mode="separates" aria-checked="false">
+              <span class="outfit-type-radio-dot" aria-hidden="true"></span>
+              <span class="outfit-type-copy"><strong>上衣+裤子</strong></span>
+            </button>
+            <button class="outfit-type-option" type="button" role="radio" data-outfit-mode="separatesShoes" aria-checked="false">
+              <span class="outfit-type-radio-dot" aria-hidden="true"></span>
+              <span class="outfit-type-copy"><strong>上衣+裤子+鞋</strong></span>
+            </button>
+          </div>
+
+          <div class="outfit-garment-section">
+            <div id="outfitGarmentList" class="outfit-garment-list slots-1" aria-live="polite">
+              <div id="outfitGarmentSlot0" class="outfit-garment-thumb is-empty">
+                <div class="outfit-garment-slot-heading">
+                  <strong id="outfitGarmentSlotLabel0">模特全身服饰图</strong><span>必填</span>
+                </div>
+                <div id="outfitGarmentSlotPreview0" class="outfit-garment-slot-preview outfit-material-tile">
+                  <img id="outfitGarmentSlotImage0" class="is-hidden" alt="模特全身服饰图" />
+                  <button id="outfitGarmentSlotAdd0" class="reference-add outfit-material-add" type="button" data-outfit-garment-menu="0" aria-label="添加模特全身服饰图" aria-expanded="false">
+                    <span id="outfitGarmentSlotEmpty0" class="outfit-add-glyph" aria-hidden="true">＋</span>
+                  </button>
+                  <div class="reference-source-menu outfit-material-menu is-menu-hidden" role="menu" aria-label="模特全身服饰图来源">
+                    <button id="outfitGarmentSlotSelection0" type="button" role="menuitem" data-outfit-garment-selection="0">从选区获取</button>
+                    <button id="outfitGarmentSlotLayer0" type="button" role="menuitem" data-outfit-garment-layer="0">从图层获取</button>
+                    <button id="outfitGarmentSlotLocal0" type="button" role="menuitem" data-outfit-garment-local="0">从本地添加</button>
+                  </div>
+                  <button id="outfitGarmentSlotRemove0" class="reference-remove outfit-material-remove is-hidden" type="button" data-outfit-garment-remove="0" aria-label="移除模特全身服饰图">×</button>
+                </div>
+              </div>
+              <div id="outfitGarmentSlot1" class="outfit-garment-thumb is-empty outfit-static-extra-slot">
+                <div class="outfit-garment-slot-heading">
+                  <strong id="outfitGarmentSlotLabel1">模特裤子/下装图</strong><span>必填</span>
+                </div>
+                <div id="outfitGarmentSlotPreview1" class="outfit-garment-slot-preview outfit-material-tile">
+                  <img id="outfitGarmentSlotImage1" class="is-hidden" alt="模特裤子/下装图" />
+                  <button id="outfitGarmentSlotAdd1" class="reference-add outfit-material-add" type="button" data-outfit-garment-menu="1" aria-label="添加模特裤子/下装图" aria-expanded="false">
+                    <span id="outfitGarmentSlotEmpty1" class="outfit-add-glyph" aria-hidden="true">＋</span>
+                  </button>
+                  <div class="reference-source-menu outfit-material-menu is-menu-hidden" role="menu" aria-label="模特裤子/下装图来源">
+                    <button id="outfitGarmentSlotSelection1" type="button" role="menuitem" data-outfit-garment-selection="1">从选区获取</button>
+                    <button id="outfitGarmentSlotLayer1" type="button" role="menuitem" data-outfit-garment-layer="1">从图层获取</button>
+                    <button id="outfitGarmentSlotLocal1" type="button" role="menuitem" data-outfit-garment-local="1">从本地添加</button>
+                  </div>
+                  <button id="outfitGarmentSlotRemove1" class="reference-remove outfit-material-remove is-hidden" type="button" data-outfit-garment-remove="1" aria-label="移除模特裤子/下装图">×</button>
+                </div>
+              </div>
+              <div id="outfitGarmentSlot2" class="outfit-garment-thumb is-empty outfit-static-extra-slot">
+                <div class="outfit-garment-slot-heading">
+                  <strong id="outfitGarmentSlotLabel2">模特鞋子图</strong><span>必填</span>
+                </div>
+                <div id="outfitGarmentSlotPreview2" class="outfit-garment-slot-preview outfit-material-tile">
+                  <img id="outfitGarmentSlotImage2" class="is-hidden" alt="模特鞋子图" />
+                  <button id="outfitGarmentSlotAdd2" class="reference-add outfit-material-add" type="button" data-outfit-garment-menu="2" aria-label="添加模特鞋子图" aria-expanded="false">
+                    <span id="outfitGarmentSlotEmpty2" class="outfit-add-glyph" aria-hidden="true">＋</span>
+                  </button>
+                  <div class="reference-source-menu outfit-material-menu is-menu-hidden" role="menu" aria-label="模特鞋子图来源">
+                    <button id="outfitGarmentSlotSelection2" type="button" role="menuitem" data-outfit-garment-selection="2">从选区获取</button>
+                    <button id="outfitGarmentSlotLayer2" type="button" role="menuitem" data-outfit-garment-layer="2">从图层获取</button>
+                    <button id="outfitGarmentSlotLocal2" type="button" role="menuitem" data-outfit-garment-local="2">从本地添加</button>
+                  </div>
+                  <button id="outfitGarmentSlotRemove2" class="reference-remove outfit-material-remove is-hidden" type="button" data-outfit-garment-remove="2" aria-label="移除模特鞋子图">×</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label class="outfit-prompt-field" for="outfitPrompt">
+            <span>画面风格与电商要求 <small>选填</small></span>
+            <span class="prompt-editor-shell unified-input-shell outfit-input-shell">
+              <textarea id="outfitPrompt" class="unified-input-control outfit-input-control" maxlength="20000" placeholder="例如：天猫高级感棚拍、白底主图、自然站姿、服装细节清晰"></textarea>
+            </span>
+          </label>
+
+          <label class="outfit-prompt-field" for="outfitExtraPrompt">
+            <span>补充要求 <small>选填</small></span>
+            <span class="prompt-editor-shell unified-input-shell outfit-input-shell">
+              <textarea id="outfitExtraPrompt" class="unified-input-control outfit-input-control" maxlength="20000" placeholder="例如：保留人物脸部、发型、姿势和背景，只替换选区内服装"></textarea>
+            </span>
+          </label>
+
+          <div class="outfit-parameter-row">
+            <div class="parameter-field model-field">
+              <span>模型渠道</span>
+              <select id="outfitModelChannel">
+                <option value="image-2">Image 2</option>
+                <option value="gm-3.1-flash-image-preview">Gemini Flash</option>
+                <option value="gm-3-pro-image-preview">Gemini Pro</option>
+                <option value="gpt-image-2.5-sunburst" selected>Image 2.5</option>
+              </select>
+            </div>
+            <div class="parameter-field resolution-field">
+              <span>分辨率</span>
+            <select id="outfitResolution">
+              <option value="1K" selected>1K</option>
+              <option value="1.5K">1.5K</option>
+              <option value="2K">2K</option>
+            </select>
+            </div>
+            <div class="parameter-field count-field">
+              <span>生成数量</span>
+              <select id="outfitGenerationCount">
+                <option value="1" selected>1 张</option>
+                <option value="2">2 张</option>
+                <option value="3">3 张</option>
+                <option value="4">4 张</option>
+              </select>
+            </div>
+          </div>
+
+        </section>
+        </div>
+
+        <section id="creativeToolPlaceholder" class="workflow-card creative-tool-placeholder is-hidden" aria-live="polite">
+          <strong id="creativeToolPlaceholderTitle">商品主图 / 场景图</strong>
+          <span id="creativeToolPlaceholderText">选择素材和模板后即可生成。</span>
+        </section>
+
+        <section id="creativeProductPanel" class="creative-product-panel is-hidden" aria-label="商品主图和场景图">
+          <section class="workflow-card product-brief-card" aria-labelledby="productBriefHeading">
+            <div class="section-heading compact">
+              <h2 id="productBriefHeading"><span class="section-number" aria-hidden="true">01</span>商品素材</h2>
+              <span id="productReferenceCount" class="count-badge">0 张参考</span>
+            </div>
+            <div class="product-reference-grid">
+              <div class="product-reference-slot">
+                <div class="product-slot-heading"><strong>商品主体</strong><small>必填</small></div>
+                <div id="productMainReferenceTile" class="product-reference-tile">
+                  <img id="productMainReferenceImage" class="is-hidden" alt="商品主体预览" />
+                  <button id="productMainReferenceAdd" class="reference-add" type="button" aria-label="添加商品主体" aria-expanded="false" title="从选区、图层或本地添加商品主体"><span class="reference-add-symbol" aria-hidden="true"></span></button>
+                  <div id="productMainReferenceMenu" class="reference-source-menu product-reference-menu is-menu-hidden" role="menu" aria-label="商品主体来源"><button id="productMainFromSelection" type="button" role="menuitem">从选区获取</button><button id="productMainFromLayer" type="button" role="menuitem">从图层获取</button><button id="productMainFromLocal" type="button" role="menuitem">从本地添加</button></div>
+                  <button id="productMainReferenceRemove" class="reference-remove product-reference-remove is-hidden" type="button" aria-label="移除商品主体">×</button>
+                </div>
+              </div>
+              <div class="product-reference-slot">
+                <div class="product-slot-heading"><strong>场景参考</strong><small>可选</small></div>
+                <div id="productSceneReferenceTile" class="product-reference-tile">
+                  <img id="productSceneReferenceImage" class="is-hidden" alt="场景参考预览" />
+                  <button id="productSceneReferenceAdd" class="reference-add" type="button" aria-label="添加场景参考" aria-expanded="false" title="从选区、图层或本地添加场景参考"><span class="reference-add-symbol" aria-hidden="true"></span></button>
+                  <div id="productSceneReferenceMenu" class="reference-source-menu product-reference-menu is-menu-hidden" role="menu" aria-label="场景参考来源"><button id="productSceneFromSelection" type="button" role="menuitem">从选区获取</button><button id="productSceneFromLayer" type="button" role="menuitem">从图层获取</button><button id="productSceneFromLocal" type="button" role="menuitem">从本地添加</button></div>
+                  <button id="productSceneReferenceRemove" class="reference-remove product-reference-remove is-hidden" type="button" aria-label="移除场景参考">×</button>
+                </div>
+              </div>
+            </div>
+            <p class="settings-note">商品主体会作为第一张参考图，场景参考会作为辅助参考图；原有历史和插入功能保持一致。</p>
+          </section>
+
+          <section class="workflow-card product-settings-card" aria-labelledby="productSettingsHeading">
+            <div class="section-heading compact">
+              <h2 id="productSettingsHeading"><span class="section-number" aria-hidden="true">02</span>主图设置</h2>
+            </div>
+
+            <div class="product-form-field product-type-field">
+              <span class="product-field-label">主图类型</span>
+              <div id="productTypeGroup" class="product-type-group" role="radiogroup" aria-label="主图类型">
+                <button class="product-type-option is-selected" type="button" role="radio" aria-checked="true" data-product-type="clean">白底主图</button>
+                <button class="product-type-option" type="button" role="radio" aria-checked="false" data-product-type="scene">场景主图</button>
+                <button class="product-type-option" type="button" role="radio" aria-checked="false" data-product-type="studio">棚拍质感</button>
+                <button class="product-type-option" type="button" role="radio" aria-checked="false" data-product-type="platform">平台风格图</button>
+              </div>
+            </div>
+
+            <div class="product-form-grid">
+              <label class="product-form-field" for="productCategory">
+                <span class="product-field-label">商品品类</span>
+                <span class="prompt-editor-shell unified-input-shell single-line-input-shell product-field-shell">
+                  <input id="productCategory" class="unified-input-control single-line-input-control" type="text" value="鞋" maxlength="100" placeholder="例如：鞋、服装、数码产品" />
+                </span>
+              </label>
+              <label class="product-form-field" for="productPlatform">
+                <span class="product-field-label">平台 / 用途</span>
+                <select id="productPlatform">
+                  <option value="general" selected>通用电商</option>
+                  <option value="tmall">淘宝天猫</option>
+                  <option value="jd">京东</option>
+                  <option value="pdd">拼多多</option>
+                  <option value="redbook">小红书</option>
+                  <option value="amazon">亚马逊</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="product-form-field" for="productRetention">
+              <span class="product-field-label">商品保留要求</span>
+              <span class="prompt-editor-shell unified-input-shell product-textarea-shell">
+                <textarea id="productRetention" class="unified-input-control product-form-textarea" maxlength="2000" placeholder="填写必须保持一致的商品细节">鞋子的一致</textarea>
+              </span>
+            </label>
+
+            <label class="product-form-field" for="productBackgroundDescription">
+              <span class="product-field-label">背景 / 风格要求</span>
+              <span class="prompt-editor-shell unified-input-shell product-textarea-shell">
+                <textarea id="productBackgroundDescription" class="unified-input-control product-form-textarea" maxlength="2000" placeholder="例如：干净白底、柔和棚拍光影、浅色高级背景"></textarea>
+              </span>
+            </label>
+
+            <div class="product-form-grid product-form-grid-bottom">
+              <label class="product-form-field" for="productComposition">
+                <span class="product-field-label">构图方式</span>
+                <select id="productComposition">
+                  <option value="center" selected>居中突出</option>
+                  <option value="fashion">时尚摄影</option>
+                  <option value="detail">近景细节</option>
+                  <option value="space">空间留白</option>
+                  <option value="scene">场景融入</option>
+                </select>
+              </label>
+              <div class="product-form-field product-brand-field">
+                <span class="product-field-label">品牌包装</span>
+                <button id="productProtectBrand" class="product-switch is-checked" type="button" role="switch" aria-checked="true">
+                  <span class="product-switch-track" aria-hidden="true"><span class="product-switch-thumb"></span></span>
+                  <span class="product-switch-label">严格保留</span>
+                </button>
+              </div>
+            </div>
+
+            <label class="product-form-field" for="productExtraPrompt">
+              <span class="product-field-label">补充需求</span>
+              <span class="prompt-editor-shell unified-input-shell product-textarea-shell">
+                <textarea id="productExtraPrompt" class="unified-input-control product-form-textarea" maxlength="4000" placeholder="填写其他希望加入画面的要求"></textarea>
+              </span>
+            </label>
+          </section>
+
+          <section class="workflow-card product-output-card" aria-labelledby="productOutputHeading">
+            <div class="section-heading compact">
+              <h2 id="productOutputHeading"><span class="section-number" aria-hidden="true">03</span>输出设置</h2>
+            </div>
+            <div class="product-options-row">
+              <label class="product-option-field"><span>输出比例</span><select id="productAspectRatio"><option value="1:1">1:1</option><option value="4:3">4:3</option><option value="3:4">3:4</option><option value="16:9">16:9</option><option value="9:16">9:16</option></select></label>
+              <label class="product-option-field"><span>分辨率</span><select id="productResolution"><option value="1K" selected>1K</option><option value="1.5K">1.5K</option><option value="2K">2K</option><option value="4K">4K</option></select></label>
+              <label class="product-option-field"><span>生成数量</span><select id="productGenerationCount"><option value="1" selected>1 张</option><option value="2">2 张</option><option value="3">3 张</option><option value="4">4 张</option></select></label>
+            </div>
+            <div class="primary-actions product-primary-actions"><button id="productRun" class="primary-button" type="button">生成商品图</button></div>
+          </section>
+        </section>
+      </section>
+
+      <section id="styleLibraryWorkspace" class="workspace-view style-library-workspace is-hidden" aria-label="GPT-Image2 词库">
+        <section class="workflow-card style-library-card">
+          <div class="style-library-heading">
+            <div>
+              <h2 id="styleLibraryTitle">GPT-Image2 词库</h2>
+            </div>
+            <p id="styleLibraryUpdateStatus" class="style-library-update-status" role="status" aria-live="polite">本地词库 · 打开时检查更新</p>
+          </div>
+          <div class="style-library-filters">
+            <div class="style-library-search-shell">
+              <input id="styleLibrarySearch" class="style-library-search" type="text" inputmode="search" autocomplete="off" placeholder="搜索模板、风格或场景" aria-label="搜索词库" />
+            </div>
+          </div>
+          <div id="styleLibraryList" class="style-library-list" aria-live="polite"></div>
+          <div class="style-library-footer">
+            <span id="styleLibraryTotal" class="style-library-total">共 0 个</span>
+            <div class="style-library-pagination" aria-label="词库分页">
+              <button id="styleLibraryPrevious" type="button" aria-label="上一页">‹</button>
+              <span id="styleLibraryPage" class="style-library-page-buttons">1 / 1</span>
+              <button id="styleLibraryNext" type="button" aria-label="下一页">›</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <div id="styleLibraryDetailOverlay" class="style-library-detail-overlay is-hidden" role="dialog" aria-modal="true" aria-labelledby="styleLibraryDetailTitle" tabindex="-1">
+        <div class="style-library-detail-dialog">
+          <button id="styleLibraryDetailClose" class="style-library-detail-close" type="button" aria-label="关闭详情" title="关闭详情">×</button>
+          <div class="style-library-detail-media">
+            <img id="styleLibraryDetailImage" alt="" />
+            <span id="styleLibraryDetailImageEmpty" class="style-library-detail-image-empty">暂无预览图</span>
+          </div>
+          <div class="style-library-detail-body">
+            <h2 id="styleLibraryDetailTitle">提示词详情</h2>
+            <p id="styleLibraryDetailMeta" class="style-library-detail-meta"></p>
+            <pre id="styleLibraryDetailPrompt" class="style-library-detail-prompt"></pre>
+            <div class="style-library-detail-actions">
+              <button id="styleLibraryDetailApply" class="primary-button" type="button">追加到提示词</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="settingsWorkspace" class="workspace-view settings-workspace is-hidden" aria-label="插件设置">
+        <nav class="settings-section-tabs" aria-label="设置菜单">
+          <button id="settingsKeysTab" class="settings-section-tab is-active" type="button" data-settings-section-tab="keys" aria-selected="true">密钥管理</button>
+          <button id="settingsDefaultsTab" class="settings-section-tab" type="button" data-settings-section-tab="defaults" aria-selected="false">默认参数</button>
+          <button id="settingsCostTab" class="settings-section-tab" type="button" data-settings-section-tab="cost" aria-selected="false">消费保护</button>
+        </nav>
+
+        <section class="workflow-card settings-card" data-settings-section-panel="keys" aria-labelledby="settingsApiHeading">
+          <div class="section-heading compact">
+            <h2 id="settingsApiHeading"><span class="section-number" aria-hidden="true">01</span>API 设置</h2>
+            <span id="settingsApiState" class="settings-state">未检测</span>
+          </div>
+          <div class="settings-note" style="margin-top:-1px;">当前生效：<strong id="settingsActiveKeyState">API Key</strong></div>
+          <label class="settings-field" for="settingsApiKey">
+            <span>API Key</span>
+            <div class="prompt-editor-shell unified-input-shell single-line-input-shell settings-secret-shell">
+              <input id="settingsApiKey" class="unified-input-control settings-input" type="password" autocomplete="off" placeholder="输入 katu-sk-..." />
+            </div>
+          </label>
+          <div class="settings-actions">
+            <button id="settingsSaveApiKey" class="primary-button" type="button">保存密钥</button>
+            <button id="settingsTestApi" class="action-button" type="button">测试连接</button>
+          </div>
+          <p class="settings-note">密钥只保存在本机 UXP 加密存储中；留空表示继续使用已保存的密钥。</p>
+        </section>
+
+        <section class="workflow-card settings-card settings-defaults-card is-hidden" data-settings-section-panel="defaults" aria-labelledby="settingsDefaultHeading">
+          <div class="section-heading compact">
+              <h2 id="settingsDefaultHeading"><span class="section-number" aria-hidden="true">01</span>羽化设置</h2>
+          </div>
+          <label class="settings-field" for="settingsMaskFeatherRadius">
+            <span>羽化范围</span>
+            <div class="prompt-editor-shell unified-input-shell single-line-input-shell">
+                <input id="settingsMaskFeatherRadius" class="unified-input-control settings-input" type="number" min="0" max="500" step="1" value="50" />
+            </div>
+          </label>
+          <div class="settings-actions">
+            <button id="settingsSaveDefaults" class="primary-button" type="button">保存羽化设置</button>
+          </div>
+        </section>
+
+        <section class="workflow-card settings-card is-hidden" data-settings-section-panel="defaults" aria-labelledby="settingsCheckHeading">
+          <div class="section-heading compact">
+            <h2 id="settingsCheckHeading"><span class="section-number" aria-hidden="true">02</span>插件自检</h2>
+            <span id="settingsCheckSummary" class="settings-state">尚未检查</span>
+          </div>
+          <div class="settings-check-grid" aria-live="polite">
+            <div class="settings-check-row">
+              <div class="settings-check-item"><span>Photoshop / UXP</span><strong id="checkPhotoshopState">未检查</strong></div>
+              <div class="settings-check-item"><span>API 接口</span><strong id="checkApiState">未检查</strong></div>
+              <div class="settings-check-item"><span>价格接口</span><strong id="checkPricingState">未检查</strong></div>
+            </div>
+            <div class="settings-check-row">
+              <div class="settings-check-item"><span>历史接口</span><strong id="checkHistoryState">未检查</strong></div>
+              <div class="settings-check-item"><span>本地存储</span><strong id="checkStorageState">未检查</strong></div>
+              <div class="settings-check-item"><span>更新程序</span><strong id="checkUpdaterState">未检查</strong></div>
+            </div>
+          </div>
+          <div class="settings-actions"><button id="settingsRunSelfCheck" class="primary-button" type="button">运行自检</button></div>
+          <p id="settingsCheckDetail" class="settings-note">自检只读取接口状态，不会提交生图请求。</p>
+        </section>
+
+        <section class="workflow-card settings-card is-hidden" data-settings-section-panel="cost" aria-labelledby="settingsBudgetHeading">
+          <div class="section-heading compact">
+            <h2 id="settingsBudgetHeading"><span class="section-number" aria-hidden="true">01</span>费用保护</h2>
+            <span id="settingsBudgetState" class="settings-state">未设置上限</span>
+          </div>
+          <div class="budget-summary-grid">
+            <div><span>本次预计</span><strong id="budgetCurrentEstimate">--</strong></div>
+            <div><span>今日累计</span><strong id="budgetTodayTotal">¥0.00</strong></div>
+            <div><span>今日剩余</span><strong id="budgetTodayRemaining">不限</strong></div>
+          </div>
+          <label class="settings-field budget-limit-field" for="settingsDailyBudget">
+            <span>每日上限（元，留空表示不限）</span>
+            <div class="prompt-editor-shell unified-input-shell single-line-input-shell">
+              <input id="settingsDailyBudget" class="unified-input-control settings-input" inputmode="decimal" type="text" placeholder="不限" />
+            </div>
+          </label>
+          <div class="settings-actions"><button id="settingsSaveBudget" class="primary-button" type="button">保存费用设置</button><button id="settingsResetBudget" class="action-button" type="button">清除今日记录</button></div>
+          <p class="settings-note">达到上限时会在发送付费请求前暂停；未核实价格的任务不会被计入，直到服务端返回实际价格。</p>
+        </section>
+
+        <section class="workflow-card settings-card settings-about is-hidden" data-settings-section-panel="defaults" aria-labelledby="settingsAboutHeading">
+          <div class="section-heading compact">
+            <h2 id="settingsAboutHeading"><span class="section-number" aria-hidden="true">03</span>插件</h2>
+            <span id="settingsVersion">v1.10.0</span>
+          </div>
+          <div class="settings-actions">
+            <button id="settingsCheckUpdate" class="action-button" type="button">检查更新</button>
+            <button id="settingsBack" class="action-button" type="button">返回图像编辑</button>
+          </div>
+        </section>
+      </section>
+
+      <section id="resultPanel" class="result-panel">
+        <div id="resultHistory" class="result-history" aria-label="生成历史" aria-live="polite">
+          <span class="result-history-empty">生成后的图片会保留在这里</span>
+        </div>
+        <div id="resultHistoryPagination" class="result-history-pagination is-hidden" aria-label="生成历史分页">
+          <span id="resultHistoryTotal">共 0 张</span>
+          <button id="resultHistoryPrevious" type="button" aria-label="上一页">‹</button>
+          <span id="resultHistoryPageButtons" class="result-history-page-buttons" aria-live="polite"></span>
+          <button id="resultHistoryNext" type="button" aria-label="下一页">›</button>
+        </div>
+        <div class="result-hidden-stage" aria-hidden="true">
+          <div id="resultStage" class="result-stage">
+            <div id="resultEmpty" class="result-empty">No image yet.</div>
+            <img id="resultImage" class="result-image is-hidden" alt="AI 生成结果预览" role="button" tabindex="0" title="点击放大预览" />
+          </div>
+          <div id="generationQueue" class="generation-queue is-hidden" aria-label="并发生成任务" aria-live="polite"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <div id="resultPreviewOverlay" class="result-preview-overlay is-hidden" role="dialog" aria-modal="true" aria-label="生成结果放大预览">
+      <div id="resultPreviewViewport" class="result-preview-viewport" tabindex="0" aria-label="生成结果大图预览">
+        <img id="resultPreviewImage" class="result-preview-image" alt="生成结果放大图" draggable="false" />
+      </div>
+      <div class="result-preview-actions">
+        <button id="resultPreviewClose" class="result-preview-close" type="button" aria-label="关闭预览">关闭</button>
+        <button id="resultPreviewSave" class="result-preview-save" type="button" aria-label="保存至本地">保存至本地</button>
+        <button id="resultPreviewCopyPrompt" class="result-preview-copy-prompt" type="button" aria-label="复制提示词">复制提示词</button>
+        <span id="resultPreviewResolution" class="result-preview-resolution" aria-label="图片分辨率">--</span>
+      </div>
+    </div>
+
+    <div id="taskDrawerOverlay" class="task-drawer-overlay is-drawer-hidden" role="dialog" aria-modal="true" aria-labelledby="taskDrawerTitle">
+      <aside class="task-drawer">
+        <div class="task-drawer-heading">
+          <div>
+            <span class="task-drawer-kicker">生成任务</span>
+            <strong id="taskDrawerTitle">任务详情</strong>
+          </div>
+          <button id="taskDrawerClose" class="task-drawer-close" type="button" aria-label="关闭任务详情">×</button>
+        </div>
+        <div class="task-drawer-preview">
+          <img id="taskDrawerImage" alt="任务生成图" />
+        </div>
+        <div class="task-drawer-meta">
+          <span id="taskDrawerModel">模型：--</span>
+          <span id="taskDrawerSize">尺寸：--</span>
+          <span id="taskDrawerTime">时间：--</span>
+        </div>
+        <div class="task-drawer-prompt">
+          <strong>提示词</strong>
+          <p id="taskDrawerPrompt">--</p>
+        </div>
+        <div class="task-drawer-actions">
+          <button id="taskDrawerReuse" class="action-button" type="button">复用</button>
+          <button id="taskDrawerInsert" class="primary-button" type="button">插入图层</button>
+        </div>
+      </aside>
+    </div>
+
+    <div id="keyOverlay" class="key-overlay is-hidden" role="dialog" aria-modal="true" aria-labelledby="keyTitle">
+      <div class="key-card">
+        <h2 id="keyTitle">首次运行需要 API Key</h2>
+        <p>密钥只加密保存在本机，不会写入插件文件或显示在主界面。</p>
+        <div class="prompt-editor-shell unified-input-shell single-line-input-shell secret-editor-shell">
+          <input
+            id="keyInput"
+            class="unified-input-control secret-editor"
+            type="password"
+            aria-label="API Key"
+            placeholder="请输入 API Key"
+          />
+        </div>
+        <div id="keyError" class="key-error" aria-live="polite"></div>
+        <div class="key-actions">
+          <button id="cancelKey" class="action-button" type="button">取消</button>
+          <button id="saveKey" class="primary-button" type="button">保存并继续</button>
+        </div>
+      </div>
+    </div>
+
+  <script src="main-v1.7.77.js?v=1.10.0"></script>
+  </body>
+</html>
