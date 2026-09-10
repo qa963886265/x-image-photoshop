@@ -811,7 +811,7 @@ function refreshIslandSelect(select, rebuildOptions) {
   control.root.classList.toggle("is-disabled", Boolean(select.disabled));
   control.value.textContent = select === elements.promptLibrary
     ? "选择提示词"
-    : (selectedOption ? selectedOption.textContent : "请选择");
+    : (selectedOption ? selectedOption.getAttribute("data-short-label") || selectedOption.textContent : "请选择");
   control.value.title = selectedOption ? (selectedOption.title || selectedOption.textContent) : "请选择";
 
   if (rebuildOptions) {
@@ -7811,7 +7811,7 @@ async function fillHistoryTask(resultId) {
     elements.aspectRatio.value = taskArchive.aspectRatio;
   }
   if (["1K", "1.5K", "2K", "4K"].includes(taskArchive.resolution)) {
-    elements.resolution.value = taskArchive.resolution;
+    syncResolutionOptions(elements.resolution, getSelectedModelConfig(), taskArchive.resolution);
   }
   if ([1, 2, 3, 4].includes(Number(taskArchive.generationCount))) {
     elements.generationCount.value = String(taskArchive.generationCount);

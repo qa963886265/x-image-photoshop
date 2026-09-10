@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const plugin = path.join(__dirname, '..', 'plugin');
 const main = fs.readFileSync(path.join(plugin, 'main-v1.7.77.js'), 'utf8');
 const utils = require(path.join(plugin, 'lib/utils.js'));
-const { API_CONFIG } = require(path.join(plugin, 'lib/constants.js'));
+const { API_CONFIG, MODEL_CONFIGS } = require(path.join(plugin, 'lib/constants.js'));
 const providerReason = '生图失败，请稍后重试或更换生图模型（原因: 所有通道尝试失败）';
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64');
 let checks = 0;
@@ -39,14 +39,14 @@ function requestContext(route) {
   const ctx = vm.createContext({
     ...utils, URL, Uint8Array, ArrayBuffer, AbortController, FormData, Set, Map,
     Date: class extends Date { static now() { return now; } },
-    API_CONFIG: {...API_CONFIG, asyncPollTimeoutMs: 20}, ASYNC_TASK_REQUEST_TIMEOUT_MS: 20,
+    API_CONFIG: {...API_CONFIG, asyncPollTimeoutMs: 20}, MODEL_CONFIGS, ASYNC_TASK_REQUEST_TIMEOUT_MS: 20,
     limitedFetch: async (url, init) => { calls.push({url, init}); return route(url, init, calls.length); },
     readBoundedResponse: async response => response.arrayBuffer(),
     withRequestTimeout: async (signal, timeout, callback) => callback(signal),
     waitForAsyncPoll: async () => { now += 25; },
-    isVolcModel: () => false,
   });
   install(ctx, [
+    'normalizeModelIdentifier', 'getModelConfig', 'getSelectedModelConfig', 'modelProvider', 'isVolcModel', 'historyModelMatches',
     'httpErrorMessage', 'createHttpResponseError', 'readImageResponse', 'absoluteKatuUrl',
     'extractAsyncTaskInfo', 'asyncTaskStatus', 'asyncTaskTerminal', 'asyncTaskFailureStatus',
     'extractAsyncImageCandidates', 'asyncCandidatesToImages', 'usableImagesFromCandidateBatch',
@@ -146,6 +146,37 @@ async function checkAggregation() {
   }
 }
 
+async function checkFlareModel() {
+  const flare = MODEL_CONFIGS['gpt-image-2.5-flare'];
+  for (const resolution of ['1K', '2K', '4K']) {
+    const {ctx, calls} = requestContext((url, init) => init.method === 'POST'
+      ? jsonResponse({id: 'flare-' + resolution, status: 'queued'}, 202)
+      : jsonResponse({status: 'succeeded', data: [{b64_json: png.toString('base64')}]}));
+    assert.equal(ctx.getModelConfig('Image-2.5 Flare').apiModel, flare.apiModel);
+    assert.equal(ctx.getModelConfig('GPT 2.5').apiModel, 'gpt-image-2.5-sunburst');
+    assert.equal(ctx.historyModelMatches(flare.apiModel, 'gpt-image-2.5-sunburst'), false);
+    assert.equal(ctx.historyModelMatches(flare.apiModel, 'Image-2.5 Flare'), true);
+    const expected = utils.resolveOutputSize('3:4', resolution, 300, 400);
+    const result = await ctx.requestImageEdit({...options(), model: flare.apiModel, resolution, size: expected.size});
+    const posts = calls.filter(call => call.init.method === 'POST');
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0].url, API_CONFIG.endpoint);
+    assert.equal(posts[0].init.body.get('model'), 'gpt-image-2.5-flare');
+    assert.equal(posts[0].init.body.get('size'), expected.size);
+    assert.equal(posts[0].init.body.getAll('image').length, 2);
+    assert.equal(result.images[0].asyncTaskId, 'flare-' + resolution);
+  }
+  const pricing = {data: [
+    {model_name: 'gpt-image-2.5-sunburst', api_price: {'1K': {enable: true, price: 0.02}, '2K': {enable: true, price: 0.18}, '4K': {enable: true, price: 0.19}}},
+    {model_name: 'gpt-image-2.5-flare', api_price: {'1K': {enable: true, price: 0.03}, '2K': {enable: true, price: 0.18}, '4K': {enable: true, price: 0.19}}}
+  ]};
+  const snapshot = utils.extractPricingSnapshot(pricing, flare.pricingModel, flare.supportedSizes);
+  assert.equal(snapshot.matchedModel, 'gpt-image-2.5-flare');
+  assert.deepEqual(snapshot.prices, {'1K': 0.03, '2K': 0.18, '4K': 0.19});
+  assert.equal(utils.extractPricingSnapshot(pricing, 'gpt-image-2.5-sunburst', ['1K']).prices['1K'], 0.02);
+  passed('Flare uses its own model, async route, pixel sizes and price for all three resolutions; Sunburst history stays separate');
+}
+
 async function checkGenerationJob() {
   const {ctx, calls} = requestContext((url, init) => init.method === 'POST'
     ? jsonResponse({id: 'task-full-job', status: 'queued'}, 202)
@@ -215,6 +246,7 @@ function checkStatusTooltip() {
 (async () => {
   await checkRequests();
   await checkAggregation();
+  await checkFlareModel();
   await checkGenerationJob();
   checkStatusTooltip();
   console.log(`All ${checks} focused generation failure checks passed; all network and host effects were mocked.`);

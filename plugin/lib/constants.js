@@ -28,7 +28,7 @@ const API_CONFIG = Object.freeze({
 });
 
 const UPDATE_CONFIG = Object.freeze({
-  currentVersion: "1.10.1",
+  currentVersion: "1.10.2",
   latestReleaseApi: "https://api.github.com/repos/qa963886265/x-image-photoshop/releases/latest",
   releasesPage: "https://github.com/qa963886265/x-image-photoshop/releases",
   updaterFolder: "updater",
@@ -68,10 +68,19 @@ const MODEL_CONFIGS = Object.freeze({
   "gpt-image-2.5-sunburst": Object.freeze({
     apiModel: "gpt-image-2.5-sunburst",
     pricingModel: "gpt-image-2.5-sunburst",
-    label: "Image 2.5",
-    shortLabel: "Image 2.5",
-    aliases: Object.freeze(["gpt-image-2.5-sunburst", "Image-2.5 Subrt", "GPT 2.5"]),
+    label: "Image 2.5 Subrt",
+    shortLabel: "Image 2.5 Subrt",
+    aliases: Object.freeze(["gpt-image-2.5-sunburst", "Image-2.5 Subrt", "Image 2.5", "GPT 2.5"]),
     supportedRatios: Object.freeze(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9", "5:4", "4:5"]),
+    supportedSizes: Object.freeze(["1K", "2K", "4K"])
+  }),
+  "gpt-image-2.5-flare": Object.freeze({
+    apiModel: "gpt-image-2.5-flare",
+    pricingModel: "gpt-image-2.5-flare",
+    label: "Image 2.5 Flare",
+    shortLabel: "Image 2.5 Flare",
+    aliases: Object.freeze(["gpt-image-2.5-flare", "Image-2.5 Flare", "GPT 2.5 Flare"]),
+    supportedRatios: Object.freeze(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "3:1", "1:3", "21:9", "9:21", "5:4", "4:5"]),
     supportedSizes: Object.freeze(["1K", "2K", "4K"])
   })
 });
