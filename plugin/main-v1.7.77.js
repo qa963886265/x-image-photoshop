@@ -978,6 +978,7 @@ function setStatus(kind, title, detail) {
   }[resolvedKind] || "i";
   elements.statusTitle.textContent = sanitizeMessage(title);
   elements.statusDetail.textContent = sanitizeMessage(detail || "");
+  elements.status.title = [elements.statusTitle.textContent, elements.statusDetail.textContent].filter(Boolean).join("：");
   if (elements.notificationLayer) elements.notificationLayer.classList.remove("is-hidden");
   elements.status.classList.remove("is-hidden");
   // Notifications are transient. Long-running work is still represented by
@@ -10435,7 +10436,10 @@ async function pollOpenAiImageTask({ apiKey, taskInfo, signal, onTaskUpdated }) 
     images.forEach((image) => { image.count = images.length; });
     return { images, partialErrors: errors };
   }
-  throw errors[0] || new Error("异步任务未返回可用图片");
+  // A failed parent does not prove every child failed. Keep an unresolved
+  // child's error so history recovery can still retrieve its eventual image.
+  throw errors.find((error) => !error || !error.terminalTaskFailure) ||
+    errors[0] || new Error("异步任务未返回可用图片");
 }
 
 function waitForAsyncPoll(signal) {
@@ -10554,9 +10558,10 @@ async function performOpenAiImageEditRequest({
     if (error && typeof error === "object") {
       const taskError = error.name === "AsyncTaskTimeoutError" || Boolean(error.taskId);
       error.serverResponseReceived = true;
-      error.responseReceived = Boolean(error.responseReceived || imagePayloadReceived || taskError);
+      // Receiving a task ID or a terminal failure is not receiving an image.
+      error.responseReceived = !error.terminalTaskFailure && Boolean(error.responseReceived || imagePayloadReceived);
       if (!error.httpStatus && !response.ok) error.httpStatus = response.status;
-      if (response.status >= 500 || taskError) error.billingUncertain = true;
+      if (response.status >= 500 || (taskError && !error.terminalTaskFailure)) error.billingUncertain = true;
     }
     throw error;
   }
@@ -13003,6 +13008,10 @@ async function runGenerationJob(job) {
     statusTitle = "任务 " + job.sequence + " 暂未从历史找到结果";
     statusDetail = "生成请求没有重发，也不会再次扣费生成。服务端可能仍在处理，请稍后查询最近 3 天的 API 历史" +
       (recoverySummary.lastError ? "；最后一次查询提示：" + String(recoverySummary.lastError.message || recoverySummary.lastError) : "");
+  } else if (firstFailure && firstFailure.terminalTaskFailure) {
+    statusKind = "error";
+    statusTitle = "生成服务未能完成任务";
+    statusDetail = String(firstFailure.error.message || firstFailure.error) + "；费用及退款以服务端账单为准";
   } else if (firstFailure && Number(firstFailure.error && firstFailure.error.httpStatus) === 400) {
     statusKind = "error";
     statusTitle = "请求参数不支持";

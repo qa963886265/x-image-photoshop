@@ -3,7 +3,7 @@
 使用 Windows 自带的 .NET Framework 4 编译器，在插件目录下运行：
 
 ```powershell
-& 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe' /nologo /target:winexe /optimize+ /out:updater/JXImageUpdater.exe /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll updater-src/JXImageUpdater.cs
+& 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe' /nologo /target:winexe /optimize+ /out:.\updater\JXImageUpdater.exe /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll .\updater-src\JXImageUpdater.cs
 ```
 
 发布前同步源码中的程序集版本、manifest.json 和 lib/constants.js 的版本，并重新编译。

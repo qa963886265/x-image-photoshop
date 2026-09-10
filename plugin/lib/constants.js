@@ -28,7 +28,7 @@ const API_CONFIG = Object.freeze({
 });
 
 const UPDATE_CONFIG = Object.freeze({
-  currentVersion: "1.10.0",
+  currentVersion: "1.10.1",
   latestReleaseApi: "https://api.github.com/repos/qa963886265/x-image-photoshop/releases/latest",
   releasesPage: "https://github.com/qa963886265/x-image-photoshop/releases",
   updaterFolder: "updater",

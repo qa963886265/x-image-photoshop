@@ -1,7 +1,7 @@
 {
   "id": "llai.psapi.selectioneditor",
   "name": " ",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "main": "index.html",
   "manifestVersion": 6,
   "host": {

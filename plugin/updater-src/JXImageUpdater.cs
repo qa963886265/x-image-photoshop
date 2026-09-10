@@ -16,8 +16,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("即杏智绘 Photoshop 插件更新程序")]
 [assembly: AssemblyCompany("即杏智绘项目团队")]
 [assembly: AssemblyProduct("即杏智绘")]
-[assembly: AssemblyVersion("1.10.0.0")]
-[assembly: AssemblyFileVersion("1.10.0.0")]
+[assembly: AssemblyVersion("1.10.1.0")]
+[assembly: AssemblyFileVersion("1.10.1.0")]
 
 namespace JXImageUpdater
 {
