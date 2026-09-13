@@ -1,6 +1,6 @@
 # 即杏智绘 Photoshop
 
-即杏智绘用于 Photoshop 局部修图、内容替换和参考图生成。当前版本为 **v1.10.2**，插件源码位于 `plugin/`。
+即杏智绘用于 Photoshop 局部修图、内容替换和参考图生成。当前版本为 **v1.10.3**，插件源码位于 `plugin/`。
 
 - [下载最新版](https://github.com/qa963886265/x-image-photoshop/releases/latest)
 - [功能与使用说明](plugin/README.md)

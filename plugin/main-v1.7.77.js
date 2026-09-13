@@ -8451,7 +8451,8 @@ function runReferenceMatchesSnapshot(references, snapshot) {
 async function restoreMissingEditorTargetReference() {
   const snapshot = state.targetSnapshot;
   if (!snapshot || runReferenceMatchesSnapshot(state.references, snapshot)) {
-    keepTargetReferenceFirst();
+    // Preserve the user's visible reference order. The target snapshot is
+    // stored independently and is used for precise placement after generation.
     return { ok: true, restored: false };
   }
 
@@ -8463,7 +8464,6 @@ async function restoreMissingEditorTargetReference() {
     // The user captured a newer edit area after the old target disappeared.
     // That visible selection is the real image one and must also own the mask.
     state.targetSnapshot = currentSelection.snapshot;
-    keepTargetReferenceFirst();
     renderReferences();
     return { ok: true, restored: false, realigned: true };
   }
@@ -8496,7 +8496,6 @@ async function restoreMissingEditorTargetReference() {
       return { ok: false, message: "无法从原 Photoshop 文档重新获取主参考图" };
     }
     state.targetSnapshot = captured.snapshot;
-    keepTargetReferenceFirst();
     renderReferences();
     return { ok: true, restored: true };
   } catch (error) {
@@ -8517,6 +8516,8 @@ function swapReferences(firstId, secondId) {
   state.references[firstIndex] = state.references[secondIndex];
   state.references[secondIndex] = temporary;
   syncPromptImageMentions(previousReferences, state.references);
+  // The array order is the upload order. The Photoshop target is tracked by
+  // its snapshot, so it does not need to be moved back to index zero.
   reorderReferenceNodes();
   updateResolvedSize();
   updateControls();
