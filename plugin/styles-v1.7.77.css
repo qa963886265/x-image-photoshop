@@ -3956,15 +3956,18 @@ body.is-task-drawer-open .app-shell {
 .island-select-settingsDefaultModel .island-select-menu {
   right: auto;
   left: 0;
-  width: 150px;
-  min-width: 150px;
+  width: 142px;
+  min-width: 142px;
+  margin-top: 4px;
+  padding: 5px;
 }
 
 .island-select-modelChannel .island-select-option,
 .island-select-outfitModelChannel .island-select-option,
 .island-select-settingsDefaultModel .island-select-option {
-  padding-right: 9px;
-  padding-left: 9px;
+  min-height: 26px;
+  margin: 0;
+  padding: 4px 8px;
   white-space: nowrap;
 }
 

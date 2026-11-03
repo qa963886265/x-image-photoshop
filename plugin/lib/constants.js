@@ -56,6 +56,15 @@ const MODEL_CONFIGS = Object.freeze({
     supportedRatios: Object.freeze(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9", "5:4", "4:5"]),
     supportedSizes: Object.freeze(["1K", "2K"])
   }),
+  "gemini-nano-banana-2.1": Object.freeze({
+    apiModel: "gemini-nano-banana-2.1",
+    pricingModel: "gemini-nano-banana-2.1",
+    label: "Gemini 2.1",
+    shortLabel: "Gemini 2.1",
+    aliases: Object.freeze(["gemini-nano-banana-2.1", "Gemini 2.1", "香蕉 2.1版"]),
+    supportedRatios: Object.freeze(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9", "5:4", "4:5"]),
+    supportedSizes: Object.freeze(["1K", "2K", "4K"])
+  }),
   "gm-3-pro-image-preview": Object.freeze({
     apiModel: "gm-3-pro-image-preview",
     pricingModel: "gm-3-pro-image-preview",
