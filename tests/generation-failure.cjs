@@ -175,6 +175,32 @@ async function checkFlareModel() {
   assert.deepEqual(snapshot.prices, {'1K': 0.03, '2K': 0.18, '4K': 0.19});
   assert.equal(utils.extractPricingSnapshot(pricing, 'gpt-image-2.5-sunburst', ['1K']).prices['1K'], 0.02);
   passed('Flare uses its own model, async route, pixel sizes and price for all three resolutions; Sunburst history stays separate');
+
+  const image26 = MODEL_CONFIGS['gpt-image-2.6-sunburst'];
+  assert.equal(image26.apiModel, 'gpt-image-2.6-sunburst');
+  assert.equal(image26.pricingModel, 'gpt-image-2.6-sunburst');
+  assert.equal(image26.supportedRatios.length, 13);
+  assert.deepEqual(image26.supportedSizes, ['1K', '2K', '4K']);
+  const image26Pricing = {models: [{
+    model_name: 'gpt-image-2.6-sunburst',
+    api_price: {'1K': {enable: true, price: 0.02}, '2K': {enable: true, price: 0.06}, '4K': {enable: true, price: 0.2}}
+  }]};
+  assert.deepEqual(
+    utils.extractPricingSnapshot(image26Pricing, image26.pricingModel, image26.supportedSizes).prices,
+    {'1K': 0.02, '2K': 0.06, '4K': 0.2}
+  );
+  for (const resolution of ['1K', '2K', '4K']) {
+    const {ctx, calls} = requestContext((url, init) => init.method === 'POST'
+      ? jsonResponse({id: 'image26-' + resolution, status: 'queued'}, 202)
+      : jsonResponse({status: 'succeeded', data: [{b64_json: png.toString('base64')}]}));
+    assert.equal(ctx.getModelConfig('GPT 2.6').apiModel, image26.apiModel);
+    const expected = utils.resolveOutputSize('3:4', resolution, 300, 400);
+    await ctx.requestImageEdit({...options(), model: image26.apiModel, resolution, size: expected.size});
+    const post = calls.find(call => call.init.method === 'POST');
+    assert.equal(post.init.body.get('model'), image26.apiModel);
+    assert.equal(post.init.body.get('size'), expected.size);
+  }
+  passed('Image 2.6 uses its own model and live pricing for all supported resolutions');
 }
 
 async function checkGenerationJob() {
