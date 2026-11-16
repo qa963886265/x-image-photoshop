@@ -5,9 +5,10 @@ const API_CONFIG = Object.freeze({
   taskEndpoint: "https://www.katuai.cn/v1/images/tasks",
   historyEndpoint: "https://www.katuai.cn/v1/images/history",
   pricingEndpoint: "https://www.katuai.cn/api/open/v1/pricing",
-  promptOptimizerEndpoint: "https://ark.cn-beijing.volces.com/api/coding/v3/responses",
+  promptOptimizerEndpoint: "https://api.veinac.vip/v1/responses",
   volcImageEndpoint: "https://ark.cn-beijing.volces.com/api/v3/images/generations",
-  promptOptimizerModel: "ark-code-latest",
+  promptOptimizerModel: "gpt-6.1-sol",
+  promptOptimizerReasoningEffort: "low",
   promptOptimizerMaxOutputTokens: 1800,
   promptOptimizerTimeoutMs: 60 * 1000,
   asyncPollIntervalMs: 10 * 1000,
@@ -28,7 +29,7 @@ const API_CONFIG = Object.freeze({
 });
 
 const UPDATE_CONFIG = Object.freeze({
-  currentVersion: "1.10.7",
+  currentVersion: "1.10.10",
   latestReleaseApi: "https://api.github.com/repos/qa963886265/x-image-photoshop/releases/latest",
   releasesPage: "https://github.com/qa963886265/x-image-photoshop/releases",
   updaterFolder: "updater",

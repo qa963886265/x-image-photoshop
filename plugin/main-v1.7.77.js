@@ -37,7 +37,7 @@ const { localFileSystem, formats, secureStorage } = uxp.storage;
 const shell = uxp.shell;
 
 const API_KEY_STORAGE = "llai_selection_editor_api_key";
-const ARK_API_KEY_STORAGE = "jx_image_ark_prompt_api_key";
+const PROMPT_OPTIMIZER_API_KEY_STORAGE = "jx_image_prompt_optimizer_api_key";
 const VOLC_IMAGE_API_KEY_STORAGE = "jx_image_volc_generation_api_key";
 const VOLC_RESULT_IMAGE_HOST = "ark-acg-cn-beijing.tos-cn-beijing.volces.com";
 const SETTINGS_STORAGE = "llai_selection_editor_settings_v2";
@@ -116,7 +116,7 @@ const state = {
   resultSequence: 0,
   favoritePrompts: [],
   apiKey: "",
-  arkApiKey: "",
+  promptOptimizerApiKey: "",
   volcImageApiKey: "",
   running: false,
   runSubmissionPending: false,
@@ -130,6 +130,7 @@ const state = {
   resumeAfterKey: false,
   pendingKeyProvider: "katu",
   promptOptimizing: false,
+  promptOptimizationReview: null,
   optimizedPromptValue: "",
   resumePromptOptimizationAfterKey: false,
   resumePromptOptimizationToRun: false,
@@ -304,9 +305,10 @@ function cacheElements() {
     "pluginVersion", "brandSettingsOpen", "settingsWorkspaceTab", "workspaceTabs",
     "referenceStrip", "referenceList", "referenceAddWrap", "referenceAdd", "referenceSourceMenu", "referenceQuickActions", "referenceQuickLayer", "referenceQuickSelection", "referenceQuickClear",
     "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
-    "precisionPlacement", "precisionPlacementToggle", "prompt", "promptCount", "promptMentionMenu", "promptContinuationCapture", "promptContinuationCaret", "modelChannel", "aspectRatio", "resolution", "generationCount",
+    "precisionPlacement", "precisionPlacementToggle", "optimizePromptBeforeRun", "optimizePromptToggle", "prompt", "promptCount", "promptMentionMenu", "promptContinuationCapture", "promptContinuationCaret", "modelChannel", "aspectRatio", "resolution", "generationCount",
     "resolvedDimensions", "run", "stop", "editorClear", "insert", "resultStage", "resultEmpty", "resultImage",
     "resultPreviewOverlay", "resultPreviewViewport", "resultPreviewImage", "resultPreviewClose", "resultPreviewSave", "resultPreviewCopyPrompt", "resultPreviewResolution",
+    "promptOptimizationReview", "promptOptimizationOriginal", "promptOptimizationResult", "promptOptimizationKeep", "promptOptimizationAccept",
     "taskDrawerOverlay", "taskDrawerClose", "taskDrawerImage", "taskDrawerTitle",
     "taskDrawerModel", "taskDrawerSize", "taskDrawerTime", "taskDrawerPrompt", "taskDrawerReuse", "taskDrawerInsert",
     "notificationLayer", "status", "statusIcon", "statusTitle", "statusDetail", "statusClose",
@@ -323,6 +325,7 @@ function cacheElements() {
     "productTypeGroup", "productCategory", "productPlatform", "productRetention", "productBackgroundDescription", "productComposition", "productProtectBrand", "productExtraPrompt",
     "productAspectRatio", "productResolution", "productGenerationCount", "productRun",
     "settingsWorkspace", "resultPanel", "settingsApiKey", "settingsApiState", "settingsActiveKeyState", "settingsSaveApiKey", "settingsTestApi",
+    "settingsPromptOptimizerKey", "settingsSavePromptOptimizerKey", "settingsPromptOptimizerKeyState",
     "settingsKeysTab", "settingsDefaultsTab", "settingsCostTab",
     "settingsMaskFeatherRadius", "maskFeatherControl", "maskFeatherEnabled", "settingsSaveDefaults",
     "settingsVersion", "settingsCheckUpdate", "settingsBack",
@@ -948,7 +951,7 @@ function initializeIslandSelects() {
 function sanitizeMessage(value) {
   let message = String(value || "未知错误");
   if (state.apiKey) message = message.split(state.apiKey).join("[已隐藏]");
-  if (state.arkApiKey) message = message.split(state.arkApiKey).join("[已隐藏]");
+  if (state.promptOptimizerApiKey) message = message.split(state.promptOptimizerApiKey).join("[已隐藏]");
   message = message.replace(/katu-sk-[A-Za-z0-9_-]+/gi, "[已隐藏的 API Key]");
   message = message.replace(/\bark-[A-Za-z0-9_-]{24,}\b/gi, "[已隐藏的方舟 API Key]");
   message = message.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [已隐藏]");
@@ -1209,7 +1212,7 @@ function isUpdateBlocked() {
   return Boolean(
     state.checkingUpdate || state.installingUpdate || state.preparingJob || state.capturing ||
     state.inserting || state.loadingPersistentHistory || state.paletteProcessing ||
-    state.promptOptimizing || state.generationJobs.length || state.recoveringPendingHistory
+    state.promptOptimizing || state.promptOptimizationReview || state.generationJobs.length || state.recoveringPendingHistory
   );
 }
 
@@ -1226,8 +1229,8 @@ async function handleUpdateControlActivation() {
 function updateControls() {
   state.running = state.generationJobs.length > 0;
   const operationBusy = state.preparingJob || state.capturing || state.inserting || state.loadingPersistentHistory || state.paletteProcessing || state.installingUpdate;
-  const busy = operationBusy || state.promptOptimizing;
-  const promptBusy = state.inserting || state.loadingPersistentHistory || state.paletteProcessing || state.installingUpdate || state.promptOptimizing;
+  const busy = operationBusy || state.promptOptimizing || Boolean(state.promptOptimizationReview);
+  const promptBusy = state.inserting || state.loadingPersistentHistory || state.paletteProcessing || state.installingUpdate || state.promptOptimizing || Boolean(state.promptOptimizationReview);
   Array.from(elements.referenceList && elements.referenceList.querySelectorAll(".reference-thumb") || []).forEach((node) => {
     // UXP's native HTML5 drop event is unreliable. Reordering is handled by
     // the mouse drag fallback in bindEvents instead.
@@ -1284,6 +1287,10 @@ function updateControls() {
   elements.generationCount.disabled = busy;
   elements.precisionPlacement.disabled = busy;
   elements.precisionPlacementToggle.setAttribute("aria-disabled", busy ? "true" : "false");
+  if (elements.optimizePromptBeforeRun) {
+    elements.optimizePromptBeforeRun.disabled = busy;
+    elements.optimizePromptToggle.setAttribute("aria-disabled", busy ? "true" : "false");
+  }
   setPromptDisabled(promptBusy);
   // Keep the picker clickable even when the library is empty so it can explain
   // its empty state instead of looking like a broken control.
@@ -3334,6 +3341,12 @@ function syncSettingsWorkspace() {
     : "输入 katu-sk-...";
   elements.settingsApiState.textContent = state.apiKey ? "已保存" : "未设置";
   elements.settingsApiState.classList.toggle("is-ready", Boolean(state.apiKey));
+  if (elements.settingsPromptOptimizerKey) {
+    elements.settingsPromptOptimizerKey.value = "";
+    elements.settingsPromptOptimizerKey.placeholder = state.promptOptimizerApiKey ? "已保存；输入新密钥可替换" : "输入 Veinac API Key";
+    elements.settingsPromptOptimizerKeyState.textContent = state.promptOptimizerApiKey ? "已保存" : "未设置";
+    elements.settingsPromptOptimizerKeyState.classList.toggle("is-ready", Boolean(state.promptOptimizerApiKey));
+  }
   if (elements.settingsActiveKeyState) {
     const selectedModel = getSelectedModelConfig();
     const volcSelected = modelProvider(selectedModel) === "volc";
@@ -3364,6 +3377,21 @@ async function saveSettingsApiKey() {
   elements.settingsApiState.textContent = "已保存";
   elements.settingsApiState.classList.add("is-ready");
   setStatus("success", "API Key 已保存", "新请求会使用设置页中保存的密钥");
+}
+
+async function savePromptOptimizerApiKey() {
+  const entered = String(elements.settingsPromptOptimizerKey.value || "").trim();
+  if (!entered) {
+    if (!state.promptOptimizerApiKey) throw new Error("请输入提示词优化 API Key");
+    elements.settingsPromptOptimizerKeyState.textContent = "继续使用已保存密钥";
+    return;
+  }
+  await storePromptOptimizerApiKey(entered);
+  elements.settingsPromptOptimizerKey.value = "";
+  elements.settingsPromptOptimizerKey.placeholder = "已保存；输入新密钥可替换";
+  elements.settingsPromptOptimizerKeyState.textContent = "已保存";
+  elements.settingsPromptOptimizerKeyState.classList.add("is-ready");
+  setStatus("success", "优化密钥已保存", "密钥保存在本机 UXP 加密存储中");
 }
 
 async function testSettingsApiConnection() {
@@ -6111,33 +6139,33 @@ async function clearStoredApiKeyIfFingerprintMatches(expectedFingerprint) {
   return true;
 }
 
-async function loadArkApiKey() {
+async function loadPromptOptimizerApiKey() {
   try {
-    const stored = await secureStorage.getItem(ARK_API_KEY_STORAGE);
+    const stored = await secureStorage.getItem(PROMPT_OPTIMIZER_API_KEY_STORAGE);
     if (stored && stored.length) {
-      state.arkApiKey = typeof stored === "string"
+      state.promptOptimizerApiKey = typeof stored === "string"
         ? stored
         : utf8BytesToString(stored instanceof Uint8Array ? stored : new Uint8Array(stored));
-      return Boolean(state.arkApiKey);
+      return Boolean(state.promptOptimizerApiKey);
     }
   } catch (_) {
-    state.arkApiKey = "";
+    state.promptOptimizerApiKey = "";
   }
   return false;
 }
 
-async function saveArkApiKey(value) {
+async function storePromptOptimizerApiKey(value) {
   const key = String(value || "").trim();
-  if (!key) throw new Error("请输入方舟 API Key");
-  await secureStorage.setItem(ARK_API_KEY_STORAGE, stringToUtf8Bytes(key));
-  state.arkApiKey = key;
+  if (!key) throw new Error("请输入提示词优化 API Key");
+  await secureStorage.setItem(PROMPT_OPTIMIZER_API_KEY_STORAGE, stringToUtf8Bytes(key));
+  state.promptOptimizerApiKey = key;
 }
 
-async function clearStoredArkApiKey() {
-  state.arkApiKey = "";
+async function clearStoredPromptOptimizerApiKey() {
+  state.promptOptimizerApiKey = "";
   try {
-    const existing = await secureStorage.getItem(ARK_API_KEY_STORAGE);
-    if (existing && existing.length) await secureStorage.removeItem(ARK_API_KEY_STORAGE);
+    const existing = await secureStorage.getItem(PROMPT_OPTIMIZER_API_KEY_STORAGE);
+    if (existing && existing.length) await secureStorage.removeItem(PROMPT_OPTIMIZER_API_KEY_STORAGE);
   } catch (_) {
     // The user can replace the key from settings even if cleanup failed.
   }
@@ -10614,9 +10642,10 @@ async function requestOpenAiImageEdit(options) {
 
 function promptOptimizationInstruction(originalPrompt) {
   return [
-    "你是即梦图像生成与 Photoshop 图像编辑提示词优化助手。",
-    "请在不改变用户原意的前提下，把原始提示词整理成明确、自然、可直接用于图生图或局部编辑的中文提示词。",
-    "先写清任务目标和参考图分工，再补充主体、动作、构图、镜头、材质、光影、色彩、背景与画面质感；只补充有助于执行的细节。",
+    "你是图像生成与 Photoshop 编辑提示词优化助手。请结合随请求附上的参考图识别画面内容，再优化用户提示词。",
+    "保持用户原意。根据任务整理主体、构图、人物或商品、服装与材质、光线、背景和画面质感；商业服装任务优先保持款式、颜色、结构和细节，超写实人物任务强调自然肤质、五官与真实光线。",
+    "如果是编辑任务，先明确必须保持的内容和允许修改的内容；只补充有助于执行的细节，不增加未要求的主体、文字或标志。",
+    "图片按参考图区从左到右、从上到下的顺序提供。结合图片描述可见事实，不猜测无法辨认的信息。",
     "必须原样保留所有以 @ 开头的图片、选区、图层编号，例如 @图片一、@选区一、@图层一。",
     "涉及换装、商品图或多张参考图时，要逐一说明每张参考图提供什么信息，不得混淆主体图与风格图。",
     "涉及局部修改时，要明确只修改指定区域，边缘自然衔接，未指定区域、人物身份、商品结构、Logo、文字、构图和画布保持不变。",
@@ -10645,14 +10674,60 @@ function assertPromptReferencesPreserved(originalPrompt, optimizedPrompt) {
   }
 }
 
+async function resolvePromptOptimizationReview(accept) {
+  const pending = state.promptOptimizationReview;
+  if (!pending) return;
+  state.promptOptimizationReview = null;
+  elements.promptOptimizationReview.classList.add("is-hidden");
+  elements.promptOptimizationReview.style.display = "none";
+  elements.promptOptimizationReview.setAttribute("aria-hidden", "true");
+  if (!accept) {
+    setPromptValue(pending.original);
+    updatePromptCount();
+    updateControls();
+    setStatus("idle", "已保留原提示词", "优化稿已丢弃，没有启动生成");
+    return;
+  }
+
+  setPromptValue(pending.optimized);
+  markPromptOptimized(pending.optimized);
+  setPromptSelection(pending.optimized.length, pending.optimized.length, false);
+  updatePromptCount();
+  updateControls();
+  setStatus("success", "已采用优化提示词", pending.continueToRun ? "正在提交生成任务" : "提示词已替换，可继续修改");
+  if (pending.continueToRun) await handleRun({
+    ...(pending.continueRunOptions || {}),
+    _submissionGuardAcquired: false,
+    skipPromptOptimization: true,
+    promptOverride: pending.optimized,
+    archivePromptOverride: pending.optimized
+  });
+}
+
 async function requestPromptOptimization({
   apiKey,
   prompt,
+  references = [],
   signal,
   maxOutputTokens,
   allowIncompleteForConnectionTest = false
 }) {
   const model = API_CONFIG.promptOptimizerModel;
+  const content = [{ type: "input_text", text: promptOptimizationInstruction(prompt) }];
+  let imageDataBytes = 0;
+  for (const reference of references) {
+    if (!reference || reference.released || !reference.file) continue;
+    const dataUrl = await volcReferenceImageDataUrl(reference.file);
+    if (!dataUrl) continue;
+    imageDataBytes += dataUrl.length;
+    if (imageDataBytes > 24 * 1024 * 1024) {
+      throw new Error("参考图合计过大，请减少图片或先缩小尺寸");
+    }
+    content.push({ type: "input_image", image_url: dataUrl, detail: "high" });
+  }
+  if (!content.some((item) => item.type === "input_image")) {
+    throw new Error("没有可发送给优化器的参考图");
+  }
   const response = await limitedFetch(
     API_CONFIG.promptOptimizerEndpoint,
     {
@@ -10665,7 +10740,8 @@ async function requestPromptOptimization({
       redirect: "error",
       body: JSON.stringify({
         model,
-        input: promptOptimizationInstruction(prompt),
+        reasoning: { effort: API_CONFIG.promptOptimizerReasoningEffort },
+        input: [{ role: "user", content }],
         max_output_tokens: Math.max(32, Math.min(
           API_CONFIG.promptOptimizerMaxOutputTokens,
           Number(maxOutputTokens) || API_CONFIG.promptOptimizerMaxOutputTokens
@@ -10739,7 +10815,7 @@ async function handleOptimizePrompt(options = {}) {
     }
     return;
   }
-  if (state.preparingJob || state.capturing || state.inserting || state.loadingPersistentHistory || state.paletteProcessing || state.installingUpdate) return;
+  if (state.preparingJob || state.capturing || state.inserting || state.loadingPersistentHistory || state.paletteProcessing || state.installingUpdate || state.promptOptimizationReview) return;
 
   if (promptContinuationState) {
     syncPromptContinuation();
@@ -10750,24 +10826,10 @@ async function handleOptimizePrompt(options = {}) {
     setStatus("warning", "没有可优化的提示词", "先输入需要修改的内容，再点击“优化提示词”");
     return;
   }
-  if (isPromptAlreadyOptimized(originalPrompt)) {
-    setStatus(
-      "idle",
-      "当前提示词已经优化",
-      continueToRun ? "内容没有修改，将直接开始生成" : "修改提示词后才会再次优化"
-    );
-    if (continueToRun) await handleRun({
-      ...(continueRunOptions || {}),
-      skipPromptOptimization: true,
-      promptOverride: originalPrompt,
-      archivePromptOverride: originalPrompt
-    });
-    return;
-  }
-  if (!state.arkApiKey) {
-    state.resumePromptOptimizationAfterKey = true;
+  if (!state.promptOptimizerApiKey) {
+    state.resumePromptOptimizationAfterKey = false;
     state.resumePromptOptimizationToRun = continueToRun;
-    setStatus("warning", "需要方舟 API Key", "已打开设置页；保存后会继续优化，只返回提示词文字");
+    setStatus("warning", "需要提示词优化密钥", "已打开设置页；保存后重新点击运行即可继续");
     showWorkspace("settings");
     return;
   }
@@ -10780,30 +10842,30 @@ async function handleOptimizePrompt(options = {}) {
   }, API_CONFIG.promptOptimizerTimeoutMs);
   promptOptimizationController = controller;
   state.promptOptimizing = true;
-  let optimizationSucceeded = false;
-  let optimizedPrompt = "";
   updateControls();
-  setStatus("working", "正在优化提示词", "调用方舟 ark-code-latest，只请求文字；完成后会覆盖输入框旧提示词");
+  setStatus("working", "正在优化提示词", "正在结合参考图分析画面；完成后会替换输入框内容");
 
   try {
     const optimized = await requestPromptOptimization({
-      apiKey: state.arkApiKey,
+      apiKey: state.promptOptimizerApiKey,
       prompt: originalPrompt,
+      references: state.references.slice(),
       signal: controller.signal
     });
     if (controller.signal.aborted) return;
-    try {
-      elements.prompt.blur();
-    } catch (_) {
-      // The value can still be replaced when the host does not expose blur.
+    elements.promptOptimizationOriginal.value = originalPrompt;
+    elements.promptOptimizationResult.value = optimized;
+    state.promptOptimizationReview = { original: originalPrompt, optimized, continueToRun, continueRunOptions };
+    if (elements.promptOptimizationReview.parentElement !== document.body) {
+      document.body.appendChild(elements.promptOptimizationReview);
     }
-    setPromptValue(optimized);
-    markPromptOptimized(optimized);
-    setPromptSelection(optimized.length, optimized.length, false);
-    updatePromptCount();
-    optimizedPrompt = optimized;
-    optimizationSucceeded = true;
-    setStatus("success", "提示词已优化", "已保留原有图片、选区和图层编号；可继续修改后再运行");
+    elements.promptOptimizationReview.classList.remove("is-hidden");
+    elements.promptOptimizationReview.style.display = "flex";
+    elements.promptOptimizationReview.style.zIndex = "2147483647";
+    elements.promptOptimizationReview.setAttribute("aria-hidden", "false");
+    elements.promptOptimizationReview.focus();
+    updateControls();
+    setStatus("success", "提示词优化完成", "检查原文和优化稿，选择是否采用");
   } catch (error) {
     if (isAbortError(error)) {
       setStatus(
@@ -10814,11 +10876,11 @@ async function handleOptimizePrompt(options = {}) {
     } else {
       const httpStatus = Number(error && error.httpStatus);
       if (httpStatus === 401) {
-        await clearStoredArkApiKey();
+        await clearStoredPromptOptimizerApiKey();
         syncSettingsWorkspace();
       }
       const failureDetail = httpStatus === 403
-        ? "方舟已拒绝访问，请检查模型权限；刚切换路由时可等待 3–5 分钟后重试。已保存密钥不会被删除"
+        ? "Veinac 已拒绝访问，请检查密钥和模型权限。已保存密钥不会被删除"
         : sanitizeMessage(error.message || error);
       setStatus("warning", "提示词优化失败", `${failureDetail}；原提示词没有被替换`);
     }
@@ -10827,12 +10889,6 @@ async function handleOptimizePrompt(options = {}) {
     if (promptOptimizationController === controller) promptOptimizationController = null;
     state.promptOptimizing = false;
     updateControls();
-    if (optimizationSucceeded && continueToRun) await handleRun({
-      ...(continueRunOptions || {}),
-      skipPromptOptimization: true,
-      promptOverride: optimizedPrompt,
-      archivePromptOverride: optimizedPrompt
-    });
   }
 }
 
@@ -13079,6 +13135,13 @@ async function handleRun(options = {}) {
     updateControls();
   }
   try {
+    if (elements.optimizePromptBeforeRun && elements.optimizePromptBeforeRun.checked && !options.skipPromptOptimization) {
+      await handleOptimizePrompt({
+        continueToRun: true,
+        continueRunOptions: { ...options, _submissionGuardAcquired: true }
+      });
+      return;
+    }
     return await handleRunInternal(options);
   } finally {
     if (!guardAlreadyHeld) {
@@ -13727,6 +13790,23 @@ function bindUxpCheckboxToggle(container, input) {
 function bindEvents() {
   bindUxpCheckboxToggle(elements.precisionPlacementToggle, elements.precisionPlacement);
   bindUxpCheckboxToggle(elements.maskFeatherControl, elements.maskFeatherEnabled);
+  bindUxpCheckboxToggle(elements.optimizePromptToggle, elements.optimizePromptBeforeRun);
+  elements.promptOptimizationKeep.addEventListener("click", () => {
+    resolvePromptOptimizationReview(false).catch((error) => setStatus("error", "无法关闭提示词预览", error.message || error));
+  });
+  elements.promptOptimizationAccept.addEventListener("click", () => {
+    resolvePromptOptimizationReview(true).catch((error) => setStatus("error", "无法采用优化稿", error.message || error));
+  });
+  elements.promptOptimizationReview.addEventListener("click", (event) => {
+    if (event.target === elements.promptOptimizationReview) {
+      resolvePromptOptimizationReview(false).catch((error) => setStatus("error", "无法关闭提示词预览", error.message || error));
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (!state.promptOptimizationReview || (event.key !== "Escape" && event.key !== "Esc")) return;
+    event.preventDefault();
+    resolvePromptOptimizationReview(false).catch((error) => setStatus("error", "无法关闭提示词预览", error.message || error));
+  });
 
   let draggedReferenceId = null;
   let suppressReferenceMention = false;
@@ -14241,6 +14321,9 @@ function bindEvents() {
   });
   elements.settingsSaveApiKey.addEventListener("click", () => {
     saveSettingsApiKey().catch((error) => setStatus("error", "无法保存 API Key", error.message || error));
+  });
+  elements.settingsSavePromptOptimizerKey.addEventListener("click", () => {
+    savePromptOptimizerApiKey().catch((error) => setStatus("error", "无法保存优化密钥", error.message || error));
   });
   elements.settingsTestApi.addEventListener("click", () => {
     testSettingsApiConnection().catch((error) => setStatus("error", "API 连接测试失败", error.message || error));
@@ -14895,7 +14978,7 @@ async function initialize() {
   updateControls();
   await loadPersistentHistoryState();
   await loadApiKey();
-  await loadArkApiKey();
+  await loadPromptOptimizerApiKey();
   await loadVolcImageApiKey();
   startPricingAutoRefresh();
   refreshLivePricing("startup").catch(() => {});

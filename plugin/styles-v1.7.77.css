@@ -14961,3 +14961,79 @@ body.is-settings-workspace-active > .app-shell {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
+
+.prompt-optimization-review {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
+  background: rgba(25, 42, 36, 0.56);
+}
+
+.prompt-optimization-review.is-hidden {
+  display: none;
+}
+
+.prompt-optimization-dialog {
+  display: flex;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 20px);
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  padding: 14px;
+  border: 1px solid #70aa95;
+  border-radius: 8px;
+  box-sizing: border-box;
+  background: #fffdf5;
+  box-shadow: 0 18px 44px rgba(25, 55, 44, 0.3);
+}
+
+.prompt-optimization-heading h2 {
+  margin: 0;
+  color: #24483b;
+  font-size: 16px;
+}
+
+.prompt-optimization-heading p {
+  margin: 4px 0 0;
+  color: #697c73;
+  font-size: 12px;
+}
+
+.prompt-optimization-preview-field {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 4px;
+  color: #48675a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.prompt-optimization-preview-field textarea {
+  width: 100%;
+  min-height: 82px;
+  max-height: 22vh;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid #d2e1d9;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #33483e;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.prompt-optimization-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}

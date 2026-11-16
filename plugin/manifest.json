@@ -1,7 +1,7 @@
 {
   "id": "llai.psapi.selectioneditor",
   "name": " ",
-  "version": "1.10.7",
+  "version": "1.10.10",
   "main": "index.html",
   "manifestVersion": 6,
   "host": {
@@ -60,6 +60,7 @@
     "network": {
       "domains": [
         "https://www.katuai.cn",
+        "https://api.veinac.vip",
         "https://ark.cn-beijing.volces.com",
         "https://ark-acg-cn-beijing.tos-cn-beijing.volces.com",
         "https://cdn.katuai.cn",
