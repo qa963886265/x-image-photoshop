@@ -28,7 +28,7 @@ const API_CONFIG = Object.freeze({
 });
 
 const UPDATE_CONFIG = Object.freeze({
-  currentVersion: "1.10.5",
+  currentVersion: "1.10.6",
   latestReleaseApi: "https://api.github.com/repos/qa963886265/x-image-photoshop/releases/latest",
   releasesPage: "https://github.com/qa963886265/x-image-photoshop/releases",
   updaterFolder: "updater",
@@ -100,6 +100,15 @@ const MODEL_CONFIGS = Object.freeze({
     aliases: Object.freeze(["gpt-image-2.5-flare", "Image-2.5 Flare", "GPT 2.5 Flare"]),
     supportedRatios: Object.freeze(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "3:1", "1:3", "21:9", "9:21", "5:4", "4:5"]),
     supportedSizes: Object.freeze(["1K", "2K", "4K"])
+  }),
+  "seedream-5.5": Object.freeze({
+    apiModel: "seedream-5.5",
+    pricingModel: "seedream-5.5",
+    label: "Seedream 5.5",
+    shortLabel: "Seedream 5.5",
+    aliases: Object.freeze(["seedream-5.5", "Seedream 5.5"]),
+    supportedRatios: Object.freeze(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "3:1", "1:3", "21:9", "9:21", "5:4", "4:5", "4:1", "1:4", "8:1", "1:8", "2:1", "1:2"]),
+    supportedSizes: Object.freeze(["1K", "2K"])
   })
 });
 
@@ -116,7 +125,13 @@ const RATIO_SIZES = Object.freeze({
   "21:9": Object.freeze({ "1K": "1536x656", "2K": "2048x880", "4K": "3840x1648" }),
   "9:21": Object.freeze({ "1K": "656x1536", "2K": "880x2048", "4K": "1648x3840" }),
   "5:4": Object.freeze({ "1K": "1280x1024", "2K": "2048x1648", "4K": "3200x2560" }),
-  "4:5": Object.freeze({ "1K": "1024x1280", "2K": "1648x2048", "4K": "2560x3200" })
+  "4:5": Object.freeze({ "1K": "1024x1280", "2K": "1648x2048", "4K": "2560x3200" }),
+  "4:1": Object.freeze({ "1K": "2048x512", "2K": "4096x1024", "4K": "5760x1440" }),
+  "1:4": Object.freeze({ "1K": "512x2048", "2K": "1024x4096", "4K": "1440x5760" }),
+  "8:1": Object.freeze({ "1K": "2880x360", "2K": "5760x720", "4K": "7680x960" }),
+  "1:8": Object.freeze({ "1K": "360x2880", "2K": "720x5760", "4K": "960x7680" }),
+  "2:1": Object.freeze({ "1K": "1448x724", "2K": "2896x1448", "4K": "4096x2048" }),
+  "1:2": Object.freeze({ "1K": "724x1448", "2K": "1448x2896", "4K": "2048x4096" })
 });
 
 const RATIO_ORDER = Object.freeze(Object.keys(RATIO_SIZES));

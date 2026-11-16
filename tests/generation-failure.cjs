@@ -5,8 +5,17 @@ const vm = require('node:vm');
 
 const plugin = path.join(__dirname, '..', 'plugin');
 const main = fs.readFileSync(path.join(plugin, 'main-v1.7.77.js'), 'utf8');
+const html = fs.readFileSync(path.join(plugin, 'index.html'), 'utf8');
 const utils = require(path.join(plugin, 'lib/utils.js'));
 const { API_CONFIG, MODEL_CONFIGS } = require(path.join(plugin, 'lib/constants.js'));
+for (const selectId of ['modelChannel', 'outfitModelChannel']) {
+  const match = new RegExp(`<select id="${selectId}">([\\s\\S]*?)<\\/select>`).exec(html);
+  assert(match, `Missing model selector ${selectId}`);
+  for (const removedModel of ['image-2', 'gm-2.5-flash-image', 'gm-3.1-flash-image-preview', 'gm-3-pro-image-preview']) {
+    assert(!match[1].includes(`value="${removedModel}"`), `${removedModel} should be absent from ${selectId}`);
+  }
+  assert(match[1].includes('value="seedream-5.5"'));
+}
 const providerReason = '生图失败，请稍后重试或更换生图模型（原因: 所有通道尝试失败）';
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64');
 let checks = 0;
@@ -201,6 +210,35 @@ async function checkFlareModel() {
     assert.equal(post.init.body.get('size'), expected.size);
   }
   passed('Image 2.6 uses its own model and live pricing for all supported resolutions');
+
+  const seedream = MODEL_CONFIGS['seedream-5.5'];
+  assert.equal(seedream.apiModel, 'seedream-5.5');
+  assert.equal(seedream.pricingModel, 'seedream-5.5');
+  assert.equal(seedream.supportedRatios.length, 19);
+  assert.deepEqual(seedream.supportedSizes, ['1K', '2K']);
+  for (const ratio of seedream.supportedRatios) {
+    for (const resolution of seedream.supportedSizes) {
+      assert.equal(utils.resolveOutputSize(ratio, resolution, 500, 500).ratio, ratio);
+    }
+  }
+  const seedreamPricing = {models: [{
+    model_name: 'seedream-5.5',
+    api_price: {'1K': {enable: true, price: 0.16}, '2K': {enable: true, price: 0.28}, '4K': {enable: false, price: 0.62}}
+  }]};
+  const seedreamSnapshot = utils.extractPricingSnapshot(seedreamPricing, seedream.pricingModel, seedream.supportedSizes);
+  assert.equal(seedreamSnapshot.matchedModel, 'seedream-5.5');
+  assert.deepEqual(seedreamSnapshot.prices, {'1K': 0.16, '2K': 0.28});
+  for (const resolution of seedream.supportedSizes) {
+    const {ctx, calls} = requestContext((url, init) => init.method === 'POST'
+      ? jsonResponse({id: 'seedream-' + resolution, status: 'queued'}, 202)
+      : jsonResponse({status: 'succeeded', data: [{b64_json: png.toString('base64')}]}));
+    const expected = utils.resolveOutputSize('8:1', resolution, 500, 500);
+    await ctx.requestImageEdit({...options(), model: seedream.apiModel, resolution, ratio: '8:1', size: expected.size});
+    const post = calls.find(call => call.init.method === 'POST');
+    assert.equal(post.init.body.get('model'), 'seedream-5.5');
+    assert.equal(post.init.body.get('size'), expected.size);
+  }
+  passed('Seedream 5.5 supports all 19 ratios, its enabled live prices and 1K/2K requests');
 }
 
 async function checkGenerationJob() {
