@@ -1,7 +1,7 @@
 {
-  "version": "1.10.6",
-  "tag": "v1.10.6",
-  "asset": "x-image-photoshop-v1.10.6.zip",
-  "title": "即杏智绘 v1.10.6",
-  "notes": "- 新增 Seedream 5.5（seedream-5.5），支持接口开放的 19 种比例及 1K、2K 分辨率。\n- 从模型菜单移除 Image 2、Gemini Flash（香蕉 2.0）和 Gemini Pro；保留 Gemini 2.1、Image 2.5 和 Image 2.6。\n- Seedream 5.5 价格使用咖图实时价格查询，4K 未开放时不显示。"
+  "version": "1.10.7",
+  "tag": "v1.10.7",
+  "asset": "x-image-photoshop-v1.10.7.zip",
+  "title": "即杏智绘 v1.10.7",
+  "notes": "- 修复修图模式打开比例菜单时，菜单被提示词输入框覆盖的问题。\n- 新增 Seedream 5.5（seedream-5.5），支持接口开放的 19 种比例及 1K、2K 分辨率。\n- 从模型菜单移除 Image 2、Gemini Flash（香蕉 2.0）和 Gemini Pro。"
 }

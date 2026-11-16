@@ -671,6 +671,8 @@ function closeIslandSelect(control, restoreFocus) {
   control.root.classList.remove("is-open");
   control.menu.classList.add("is-hidden");
   control.trigger.setAttribute("aria-expanded", "false");
+  const outputCard = control.root.closest(".output-card");
+  if (outputCard) outputCard.classList.remove("is-select-open");
   if (restoreFocus) {
     try {
       control.trigger.focus();
@@ -714,6 +716,8 @@ function openIslandSelect(select, control, focusOption) {
   control.root.classList.add("is-open");
   control.menu.classList.remove("is-hidden");
   control.trigger.setAttribute("aria-expanded", "true");
+  const outputCard = control.root.closest(".output-card");
+  if (outputCard && select === elements.aspectRatio) outputCard.classList.add("is-select-open");
   // Anchor below the picker while matching both edges of the prompt section.
   if (select === elements.promptLibrary) {
     control.root.style.setProperty("position", "relative", "important");
@@ -911,7 +915,7 @@ function initializeIslandSelects() {
     root.appendChild(trigger);
     root.appendChild(menu);
     select.parentNode.insertBefore(root, select.nextSibling);
-    const control = { root, trigger, value, arrow, menu };
+    const control = { root, trigger, value, arrow, menu, select };
     islandSelectControls.set(select, control);
 
     root.addEventListener("click", (event) => event.stopPropagation());

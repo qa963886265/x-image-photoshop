@@ -1379,6 +1379,10 @@ button {
   background: linear-gradient(145deg, #fffdf2 0%, var(--card-yellow) 100%);
 }
 
+.output-card.is-select-open {
+  z-index: 60;
+}
+
 .result-panel {
   z-index: 10;
 }
