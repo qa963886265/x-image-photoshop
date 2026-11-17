@@ -14965,8 +14965,8 @@ body.is-settings-workspace-active > .app-shell {
 .prompt-optimization-review {
   display: block;
   width: 100%;
-  margin: 7px 0 2px;
-  padding-top: 7px;
+  margin: 5px 0 1px;
+  padding-top: 5px;
   border-top: 1px solid var(--line);
   overflow: hidden;
   box-sizing: border-box;
@@ -14982,7 +14982,7 @@ body.is-settings-workspace-active > .app-shell {
   width: 100%;
   min-height: 0;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
   padding: 0;
   box-sizing: border-box;
   background: transparent;
@@ -14991,7 +14991,8 @@ body.is-settings-workspace-active > .app-shell {
 .prompt-optimization-heading h2 {
   margin: 0;
   color: var(--ink-strong);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .prompt-optimization-result-shell {
@@ -15009,46 +15010,110 @@ body.is-settings-workspace-active > .app-shell {
 
 #editorWorkspace > .prompt-card .prompt-optimization-result-shell > .prompt-editor {
   width: 100%;
-  height: 132px !important;
-  min-height: 112px !important;
-  max-height: 180px !important;
+  height: 120px !important;
+  min-height: 104px !important;
+  max-height: 160px !important;
   resize: none !important;
   padding: 6px;
 }
 
 .prompt-optimization-actions {
   display: flex;
-  justify-content: stretch;
-  gap: 4px;
+  justify-content: flex-end;
+  gap: 8px;
   padding-top: 0;
 }
 
 .prompt-optimization-actions > button {
-  height: 29px;
-  min-height: 29px;
-  max-height: 29px;
-  min-width: 0;
-  flex: 1 1 0;
-  padding: 2px 8px;
+  height: 30px;
+  min-height: 30px;
+  max-height: 30px;
+  min-width: 112px;
+  padding: 2px 14px;
   border-width: 1px;
-  border-radius: 8px;
-  box-shadow: 0 3px 0 var(--shadow);
+  border-radius: 12px;
   font-size: 11px;
-  line-height: 24px;
+  line-height: 25px;
 }
 
 .prompt-optimization-actions > #promptOptimizationAccept {
   border-color: #079786;
   color: #fff;
   background: linear-gradient(180deg, #24d6c8 0%, #12b9ad 100%);
-  box-shadow: 0 3px 0 #087f73;
+  box-shadow: 0 3px 0 #087f73, 0 5px 9px rgba(7, 127, 115, 0.16);
 }
 
 .prompt-optimization-actions > #promptOptimizationKeep {
   border-color: #d0a26b;
   color: #805c33;
   background: linear-gradient(180deg, #fff0d9 0%, #ffd8ad 100%);
-  box-shadow: 0 3px 0 #c7955d;
+  box-shadow: 0 3px 0 #c7955d, 0 5px 9px rgba(164, 112, 55, 0.12);
+}
+
+/* Keep saved prompts together on their own row, with switches below. */
+#editorWorkspace > section.prompt-card > div.prompt-actions-row {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: 28px 28px !important;
+  grid-template-areas:
+    "favorite favorite favorite"
+    "optimize precision feather" !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  gap: 4px !important;
+  padding: 2px 0 !important;
+  top: 0 !important;
+  transform: none !important;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > .favorite-prompt-control {
+  grid-area: favorite !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  margin: 0 !important;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > #optimizePromptToggle,
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > #precisionPlacementToggle,
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > #maskFeatherControl {
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  margin: 0 !important;
+  padding: 0 4px !important;
+  flex: none !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > #optimizePromptToggle {
+  grid-area: optimize !important;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > #precisionPlacementToggle {
+  grid-area: precision !important;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > #maskFeatherControl {
+  grid-area: feather !important;
+}
+
+#editorWorkspace > .output-card > .parameter-row > .parameter-field > span {
+  display: none !important;
+}
+
+#editorWorkspace > .output-card > .parameter-row {
+  align-items: center !important;
+  padding-top: 0 !important;
 }
 
 @keyframes prompt-review-expand {
