@@ -10679,7 +10679,7 @@ async function resolvePromptOptimizationReview(accept) {
   if (!pending) return;
   state.promptOptimizationReview = null;
   elements.promptOptimizationReview.classList.add("is-hidden");
-  elements.promptOptimizationReview.style.display = "none";
+  elements.promptOptimizationReview.style.display = "";
   elements.promptOptimizationReview.setAttribute("aria-hidden", "true");
   if (!accept) {
     setPromptValue(pending.original);
@@ -10855,6 +10855,7 @@ async function handleOptimizePrompt(options = {}) {
     if (controller.signal.aborted) return;
     elements.promptOptimizationResult.value = optimized;
     state.promptOptimizationReview = { original: originalPrompt, optimized, continueToRun, continueRunOptions };
+    elements.promptOptimizationReview.style.display = "block";
     elements.promptOptimizationReview.classList.remove("is-hidden");
     elements.promptOptimizationReview.setAttribute("aria-hidden", "false");
     elements.promptOptimizationResult.scrollTop = 0;

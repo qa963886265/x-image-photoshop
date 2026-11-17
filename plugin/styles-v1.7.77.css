@@ -14965,7 +14965,9 @@ body.is-settings-workspace-active > .app-shell {
 .prompt-optimization-review {
   display: block;
   width: 100%;
-  margin: 8px 0 2px;
+  margin: 7px 0 2px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
   overflow: hidden;
   box-sizing: border-box;
   animation: prompt-review-expand 180ms ease-out;
@@ -14980,48 +14982,67 @@ body.is-settings-workspace-active > .app-shell {
   width: 100%;
   min-height: 0;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid #70aa95;
-  border-radius: 8px;
+  gap: 7px;
+  padding: 0;
   box-sizing: border-box;
-  background: linear-gradient(145deg, #f4fff9 0%, #e9faf5 100%);
-  box-shadow: 0 3px 8px rgba(25, 55, 44, 0.12);
+  background: transparent;
 }
 
 .prompt-optimization-heading h2 {
   margin: 0;
-  color: #24483b;
-  font-size: 16px;
-}
-
-.prompt-optimization-heading p {
-  margin: 4px 0 0;
-  color: #697c73;
-  font-size: 12px;
+  color: var(--ink-strong);
+  font-size: 14px;
 }
 
 .prompt-optimization-result-shell {
   margin: 0;
-  border-color: #a9cbbb;
-  border-radius: 10px;
-  background: #fffdf5;
+  border-color: var(--line);
+  border-radius: 12px;
+  background: var(--parchment-light);
 }
 
-.prompt-optimization-result-shell textarea {
+#editorWorkspace > .prompt-card .prompt-optimization-result-shell > .prompt-editor {
   width: 100%;
-  height: 82px;
-  min-height: 72px;
-  max-height: 96px;
-  resize: none;
+  height: 132px !important;
+  min-height: 112px !important;
+  max-height: 180px !important;
+  resize: none !important;
   padding: 6px;
 }
 
 .prompt-optimization-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 6px;
+  justify-content: stretch;
+  gap: 4px;
   padding-top: 0;
+}
+
+.prompt-optimization-actions > button {
+  height: 29px;
+  min-height: 29px;
+  max-height: 29px;
+  min-width: 0;
+  flex: 1 1 0;
+  padding: 2px 8px;
+  border-width: 1px;
+  border-radius: 8px;
+  box-shadow: 0 3px 0 var(--shadow);
+  font-size: 11px;
+  line-height: 24px;
+}
+
+.prompt-optimization-actions > #promptOptimizationAccept {
+  border-color: #079786;
+  color: #fff;
+  background: linear-gradient(180deg, #24d6c8 0%, #12b9ad 100%);
+  box-shadow: 0 3px 0 #087f73;
+}
+
+.prompt-optimization-actions > #promptOptimizationKeep {
+  border-color: #d0a26b;
+  color: #805c33;
+  background: linear-gradient(180deg, #fff0d9 0%, #ffd8ad 100%);
+  box-shadow: 0 3px 0 #c7955d;
 }
 
 @keyframes prompt-review-expand {
