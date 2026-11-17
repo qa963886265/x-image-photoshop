@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title></title>
-  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.10" />
+  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.11" />
   <style>
     #referenceList > #referenceAddWrap {
       position: relative !important;
@@ -49,7 +49,27 @@
   </style>
   </head>
   <body>
-    <main class="app-shell" style="padding-top:0;margin-top:0;">
+    <main id="appShell" class="app-shell" style="padding-top:0;margin-top:0;">
+      <div id="promptOptimizationReview" class="prompt-optimization-review is-hidden" role="dialog" aria-modal="true" aria-labelledby="promptOptimizationReviewTitle" tabindex="-1" aria-hidden="true">
+        <section class="prompt-optimization-dialog">
+          <div class="prompt-optimization-heading">
+            <h2 id="promptOptimizationReviewTitle">检查优化结果</h2>
+            <p>原提示词保留在下方。选择采用后才会替换并继续生成。</p>
+          </div>
+          <label class="prompt-optimization-preview-field">
+            <span>原提示词</span>
+            <textarea id="promptOptimizationOriginal" readonly></textarea>
+          </label>
+          <label class="prompt-optimization-preview-field">
+            <span>优化稿</span>
+            <textarea id="promptOptimizationResult" readonly></textarea>
+          </label>
+          <div class="prompt-optimization-actions">
+            <button id="promptOptimizationKeep" class="action-button" type="button">保留原文</button>
+            <button id="promptOptimizationAccept" class="primary-button" type="button">采用优化稿</button>
+          </div>
+        </section>
+      </div>
       <div class="plugin-identity" style="margin-top:0;">
         <div id="brandSettingsOpen" class="brand-lockup" role="button" tabindex="0" title="检查更新" aria-label="检查即杏智绘更新" style="position:absolute;left:5px;top:50%;transform:translateY(-50%);width:88px;">
           <span class="brand-icon-shell" aria-hidden="true">
@@ -57,7 +77,7 @@
           </span>
           <div class="brand-copy">
             <strong id="pluginName" class="plugin-name">即杏智绘</strong>
-            <span id="pluginVersion" class="plugin-version" role="button" tabindex="0" title="检查更新">v1.10.10</span>
+            <span id="pluginVersion" class="plugin-version" role="button" tabindex="0" title="检查更新">v1.10.11</span>
           </div>
         </div>
         <div id="notificationLayer" class="notification-layer is-hidden" aria-live="polite">
@@ -707,7 +727,7 @@
         <section class="workflow-card settings-card settings-about is-hidden" data-settings-section-panel="defaults" aria-labelledby="settingsAboutHeading">
           <div class="section-heading compact">
             <h2 id="settingsAboutHeading"><span class="section-number" aria-hidden="true">03</span>插件</h2>
-            <span id="settingsVersion">v1.10.10</span>
+            <span id="settingsVersion">v1.10.11</span>
           </div>
           <div class="settings-actions">
             <button id="settingsCheckUpdate" class="action-button" type="button">检查更新</button>
@@ -736,27 +756,6 @@
       </section>
 
     </main>
-
-    <div id="promptOptimizationReview" class="prompt-optimization-review is-hidden" role="dialog" aria-modal="true" aria-labelledby="promptOptimizationReviewTitle" tabindex="-1">
-      <section class="prompt-optimization-dialog">
-        <div class="prompt-optimization-heading">
-          <h2 id="promptOptimizationReviewTitle">检查优化结果</h2>
-          <p>原提示词还在。确认采用后才会替换。</p>
-        </div>
-        <label class="prompt-optimization-preview-field">
-          <span>原提示词</span>
-          <textarea id="promptOptimizationOriginal" readonly></textarea>
-        </label>
-        <label class="prompt-optimization-preview-field">
-          <span>优化稿</span>
-          <textarea id="promptOptimizationResult" readonly></textarea>
-        </label>
-        <div class="prompt-optimization-actions">
-          <button id="promptOptimizationKeep" class="action-button" type="button">保留原文</button>
-          <button id="promptOptimizationAccept" class="primary-button" type="button">采用优化稿</button>
-        </div>
-      </section>
-    </div>
 
     <div id="resultPreviewOverlay" class="result-preview-overlay is-hidden" role="dialog" aria-modal="true" aria-label="生成结果放大预览">
       <div id="resultPreviewViewport" class="result-preview-viewport" tabindex="0" aria-label="生成结果大图预览">
@@ -819,6 +818,6 @@
       </div>
     </div>
 
-  <script src="main-v1.7.77.js?v=1.10.10"></script>
+  <script src="main-v1.7.77.js?v=1.10.11"></script>
   </body>
 </html>

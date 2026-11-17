@@ -302,7 +302,7 @@ function isVolcModel(modelName) {
 
 function cacheElements() {
   const ids = [
-    "pluginVersion", "brandSettingsOpen", "settingsWorkspaceTab", "workspaceTabs",
+    "appShell", "pluginVersion", "brandSettingsOpen", "settingsWorkspaceTab", "workspaceTabs",
     "referenceStrip", "referenceList", "referenceAddWrap", "referenceAdd", "referenceSourceMenu", "referenceQuickActions", "referenceQuickLayer", "referenceQuickSelection", "referenceQuickClear",
     "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
     "precisionPlacement", "precisionPlacementToggle", "optimizePromptBeforeRun", "optimizePromptToggle", "prompt", "promptCount", "promptMentionMenu", "promptContinuationCapture", "promptContinuationCaret", "modelChannel", "aspectRatio", "resolution", "generationCount",
@@ -10681,6 +10681,7 @@ async function resolvePromptOptimizationReview(accept) {
   elements.promptOptimizationReview.classList.add("is-hidden");
   elements.promptOptimizationReview.style.display = "none";
   elements.promptOptimizationReview.setAttribute("aria-hidden", "true");
+  elements.appShell.classList.remove("is-prompt-optimization-review-open");
   if (!accept) {
     setPromptValue(pending.original);
     updatePromptCount();
@@ -10856,14 +10857,12 @@ async function handleOptimizePrompt(options = {}) {
     elements.promptOptimizationOriginal.value = originalPrompt;
     elements.promptOptimizationResult.value = optimized;
     state.promptOptimizationReview = { original: originalPrompt, optimized, continueToRun, continueRunOptions };
-    if (elements.promptOptimizationReview.parentElement !== document.body) {
-      document.body.appendChild(elements.promptOptimizationReview);
-    }
+    elements.appShell.classList.add("is-prompt-optimization-review-open");
     elements.promptOptimizationReview.classList.remove("is-hidden");
-    elements.promptOptimizationReview.style.display = "flex";
-    elements.promptOptimizationReview.style.zIndex = "2147483647";
     elements.promptOptimizationReview.setAttribute("aria-hidden", "false");
     elements.promptOptimizationReview.focus();
+    elements.promptOptimizationOriginal.scrollTop = 0;
+    elements.promptOptimizationResult.scrollTop = 0;
     updateControls();
     setStatus("success", "提示词优化完成", "检查原文和优化稿，选择是否采用");
   } catch (error) {
@@ -13797,17 +13796,6 @@ function bindEvents() {
   elements.promptOptimizationAccept.addEventListener("click", () => {
     resolvePromptOptimizationReview(true).catch((error) => setStatus("error", "无法采用优化稿", error.message || error));
   });
-  elements.promptOptimizationReview.addEventListener("click", (event) => {
-    if (event.target === elements.promptOptimizationReview) {
-      resolvePromptOptimizationReview(false).catch((error) => setStatus("error", "无法关闭提示词预览", error.message || error));
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (!state.promptOptimizationReview || (event.key !== "Escape" && event.key !== "Esc")) return;
-    event.preventDefault();
-    resolvePromptOptimizationReview(false).catch((error) => setStatus("error", "无法关闭提示词预览", error.message || error));
-  });
-
   let draggedReferenceId = null;
   let suppressReferenceMention = false;
   let pointerDraggedReferenceId = null;

@@ -14963,15 +14963,15 @@ body.is-settings-workspace-active > .app-shell {
 }
 
 .prompt-optimization-review {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483647;
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
+  width: 100%;
+  min-height: calc(100vh - 16px);
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 4px 0;
   box-sizing: border-box;
-  background: rgba(25, 42, 36, 0.56);
+  background: transparent;
 }
 
 .prompt-optimization-review.is-hidden {
@@ -14980,17 +14980,21 @@ body.is-settings-workspace-active > .app-shell {
 
 .prompt-optimization-dialog {
   display: flex;
-  width: min(520px, 100%);
-  max-height: calc(100vh - 20px);
+  width: 100%;
+  min-height: 0;
   flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-  padding: 14px;
+  gap: 8px;
+  overflow: auto;
+  padding: 12px;
   border: 1px solid #70aa95;
   border-radius: 8px;
   box-sizing: border-box;
   background: #fffdf5;
   box-shadow: 0 18px 44px rgba(25, 55, 44, 0.3);
+}
+
+.app-shell.is-prompt-optimization-review-open > :not(#promptOptimizationReview) {
+  display: none !important;
 }
 
 .prompt-optimization-heading h2 {
@@ -15017,8 +15021,9 @@ body.is-settings-workspace-active > .app-shell {
 
 .prompt-optimization-preview-field textarea {
   width: 100%;
-  min-height: 82px;
-  max-height: 22vh;
+  min-height: 72px;
+  height: 19vh;
+  max-height: 160px;
   resize: vertical;
   padding: 8px;
   border: 1px solid #d2e1d9;
