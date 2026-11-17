@@ -15059,12 +15059,9 @@ body.is-settings-workspace-active > .app-shell {
 }
 
 #editorWorkspace > section.prompt-card > div.prompt-actions-row {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  grid-template-rows: 28px 28px !important;
-  grid-template-areas:
-    "favorite favorite favorite"
-    "optimize precision feather" !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
@@ -15075,10 +15072,11 @@ body.is-settings-workspace-active > .app-shell {
 }
 
 #editorWorkspace > section.prompt-card > div.prompt-actions-row > .favorite-prompt-control {
-  grid-area: favorite !important;
-  width: 100% !important;
+  order: -1 !important;
+  flex: 0 0 204px !important;
+  width: 204px !important;
   min-width: 0 !important;
-  max-width: none !important;
+  max-width: 100% !important;
   height: 28px !important;
   min-height: 28px !important;
   max-height: 28px !important;
@@ -15097,21 +15095,9 @@ body.is-settings-workspace-active > .app-shell {
   max-height: 28px !important;
   margin: 0 !important;
   padding: 0 4px !important;
-  flex: none !important;
+  flex: 1 1 30% !important;
   box-sizing: border-box !important;
   transform: none !important;
-}
-
-#editorWorkspace > section.prompt-card > div.prompt-actions-row > #optimizePromptToggle {
-  grid-area: optimize !important;
-}
-
-#editorWorkspace > section.prompt-card > div.prompt-actions-row > #precisionPlacementToggle {
-  grid-area: precision !important;
-}
-
-#editorWorkspace > section.prompt-card > div.prompt-actions-row > #maskFeatherControl {
-  grid-area: feather !important;
 }
 
 #editorWorkspace > section.output-card.workflow-card > div.parameter-row > div.parameter-field > span {
