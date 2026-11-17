@@ -308,7 +308,7 @@ function cacheElements() {
     "precisionPlacement", "precisionPlacementToggle", "optimizePromptBeforeRun", "optimizePromptToggle", "prompt", "promptCount", "promptMentionMenu", "promptContinuationCapture", "promptContinuationCaret", "modelChannel", "aspectRatio", "resolution", "generationCount",
     "resolvedDimensions", "run", "stop", "editorClear", "insert", "resultStage", "resultEmpty", "resultImage",
     "resultPreviewOverlay", "resultPreviewViewport", "resultPreviewImage", "resultPreviewClose", "resultPreviewSave", "resultPreviewCopyPrompt", "resultPreviewResolution",
-    "promptOptimizationReview", "promptOptimizationOriginal", "promptOptimizationResult", "promptOptimizationKeep", "promptOptimizationAccept",
+    "promptOptimizationReview", "promptOptimizationResult", "promptOptimizationKeep", "promptOptimizationAccept",
     "taskDrawerOverlay", "taskDrawerClose", "taskDrawerImage", "taskDrawerTitle",
     "taskDrawerModel", "taskDrawerSize", "taskDrawerTime", "taskDrawerPrompt", "taskDrawerReuse", "taskDrawerInsert",
     "notificationLayer", "status", "statusIcon", "statusTitle", "statusDetail", "statusClose",
@@ -10681,7 +10681,6 @@ async function resolvePromptOptimizationReview(accept) {
   elements.promptOptimizationReview.classList.add("is-hidden");
   elements.promptOptimizationReview.style.display = "none";
   elements.promptOptimizationReview.setAttribute("aria-hidden", "true");
-  elements.appShell.classList.remove("is-prompt-optimization-review-open");
   if (!accept) {
     setPromptValue(pending.original);
     updatePromptCount();
@@ -10854,14 +10853,10 @@ async function handleOptimizePrompt(options = {}) {
       signal: controller.signal
     });
     if (controller.signal.aborted) return;
-    elements.promptOptimizationOriginal.value = originalPrompt;
     elements.promptOptimizationResult.value = optimized;
     state.promptOptimizationReview = { original: originalPrompt, optimized, continueToRun, continueRunOptions };
-    elements.appShell.classList.add("is-prompt-optimization-review-open");
     elements.promptOptimizationReview.classList.remove("is-hidden");
     elements.promptOptimizationReview.setAttribute("aria-hidden", "false");
-    elements.promptOptimizationReview.focus();
-    elements.promptOptimizationOriginal.scrollTop = 0;
     elements.promptOptimizationResult.scrollTop = 0;
     updateControls();
     setStatus("success", "提示词优化完成", "检查原文和优化稿，选择是否采用");

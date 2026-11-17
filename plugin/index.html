@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title></title>
-  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.11" />
+  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.12" />
   <style>
     #referenceList > #referenceAddWrap {
       position: relative !important;
@@ -50,26 +50,6 @@
   </head>
   <body>
     <main id="appShell" class="app-shell" style="padding-top:0;margin-top:0;">
-      <div id="promptOptimizationReview" class="prompt-optimization-review is-hidden" role="dialog" aria-modal="true" aria-labelledby="promptOptimizationReviewTitle" tabindex="-1" aria-hidden="true">
-        <section class="prompt-optimization-dialog">
-          <div class="prompt-optimization-heading">
-            <h2 id="promptOptimizationReviewTitle">检查优化结果</h2>
-            <p>原提示词保留在下方。选择采用后才会替换并继续生成。</p>
-          </div>
-          <label class="prompt-optimization-preview-field">
-            <span>原提示词</span>
-            <textarea id="promptOptimizationOriginal" readonly></textarea>
-          </label>
-          <label class="prompt-optimization-preview-field">
-            <span>优化稿</span>
-            <textarea id="promptOptimizationResult" readonly></textarea>
-          </label>
-          <div class="prompt-optimization-actions">
-            <button id="promptOptimizationKeep" class="action-button" type="button">保留原文</button>
-            <button id="promptOptimizationAccept" class="primary-button" type="button">采用优化稿</button>
-          </div>
-        </section>
-      </div>
       <div class="plugin-identity" style="margin-top:0;">
         <div id="brandSettingsOpen" class="brand-lockup" role="button" tabindex="0" title="检查更新" aria-label="检查即杏智绘更新" style="position:absolute;left:5px;top:50%;transform:translateY(-50%);width:88px;">
           <span class="brand-icon-shell" aria-hidden="true">
@@ -77,7 +57,7 @@
           </span>
           <div class="brand-copy">
             <strong id="pluginName" class="plugin-name">即杏智绘</strong>
-            <span id="pluginVersion" class="plugin-version" role="button" tabindex="0" title="检查更新">v1.10.11</span>
+            <span id="pluginVersion" class="plugin-version" role="button" tabindex="0" title="检查更新">v1.10.12</span>
           </div>
         </div>
         <div id="notificationLayer" class="notification-layer is-hidden" aria-live="polite">
@@ -140,6 +120,21 @@
           ></textarea>
           <textarea id="promptContinuationCapture" class="prompt-continuation-capture is-hidden" maxlength="20000" tabindex="-1" aria-label="继续输入提示词"></textarea>
           <span id="promptContinuationCaret" class="prompt-continuation-caret is-hidden" aria-hidden="true"></span>
+        </div>
+        <div id="promptOptimizationReview" class="prompt-optimization-review is-hidden" role="region" aria-labelledby="promptOptimizationReviewTitle" aria-hidden="true">
+          <section class="prompt-optimization-dialog">
+            <div class="prompt-optimization-heading">
+              <h2 id="promptOptimizationReviewTitle">优化结果预览</h2>
+              <p>原文仍在上方输入框中，以下是优化后的提示词。</p>
+            </div>
+            <div class="prompt-editor-shell prompt-optimization-result-shell">
+              <textarea id="promptOptimizationResult" class="prompt-editor" rows="5" readonly aria-label="优化后的提示词"></textarea>
+            </div>
+            <div class="prompt-optimization-actions">
+              <button id="promptOptimizationKeep" class="action-button" type="button">保留原文</button>
+              <button id="promptOptimizationAccept" class="primary-button" type="button">采用优化稿</button>
+            </div>
+          </section>
         </div>
         <div class="prompt-actions-row" aria-label="提示词工具">
           <label id="optimizePromptToggle" class="precision-row prompt-optimizer-toggle" for="optimizePromptBeforeRun" role="switch" tabindex="0" aria-checked="false" title="运行前使用参考图和提示词进行优化">
@@ -727,7 +722,7 @@
         <section class="workflow-card settings-card settings-about is-hidden" data-settings-section-panel="defaults" aria-labelledby="settingsAboutHeading">
           <div class="section-heading compact">
             <h2 id="settingsAboutHeading"><span class="section-number" aria-hidden="true">03</span>插件</h2>
-            <span id="settingsVersion">v1.10.11</span>
+            <span id="settingsVersion">v1.10.12</span>
           </div>
           <div class="settings-actions">
             <button id="settingsCheckUpdate" class="action-button" type="button">检查更新</button>
@@ -818,6 +813,6 @@
       </div>
     </div>
 
-  <script src="main-v1.7.77.js?v=1.10.11"></script>
+  <script src="main-v1.7.77.js?v=1.10.12"></script>
   </body>
 </html>
