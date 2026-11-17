@@ -15051,6 +15051,13 @@ body.is-settings-workspace-active > .app-shell {
 }
 
 /* Keep saved prompts together on their own row, with switches below. */
+#editorWorkspace > section.prompt-card.workflow-card {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
 #editorWorkspace > section.prompt-card > div.prompt-actions-row {
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -15107,8 +15114,15 @@ body.is-settings-workspace-active > .app-shell {
   grid-area: feather !important;
 }
 
-#editorWorkspace > .output-card > .parameter-row > .parameter-field > span {
+#editorWorkspace > section.output-card.workflow-card > div.parameter-row > div.parameter-field > span {
   display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
 }
 
 #editorWorkspace > .output-card > .parameter-row {
