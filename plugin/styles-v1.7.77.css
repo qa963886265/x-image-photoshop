@@ -8425,7 +8425,7 @@ body {
   align-content: flex-start !important;
   align-items: flex-start !important;
   justify-content: flex-start !important;
-  gap: 4px !important;
+  gap: 2px 4px !important;
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
@@ -15065,7 +15065,8 @@ body.is-settings-workspace-active > .app-shell {
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
-  gap: 4px !important;
+  row-gap: 2px !important;
+  column-gap: 4px !important;
   padding: 2px 0 !important;
   top: 0 !important;
   transform: none !important;
@@ -15083,6 +15084,18 @@ body.is-settings-workspace-active > .app-shell {
   margin: 0 !important;
 }
 
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > .prompt-actions-row-break {
+  order: 0 !important;
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 #editorWorkspace > section.prompt-card > div.prompt-actions-row > label#optimizePromptToggle.prompt-optimizer-toggle,
 #editorWorkspace > section.prompt-card > div.prompt-actions-row > label#precisionPlacementToggle.precision-row,
 #editorWorkspace > section.prompt-card > div.prompt-actions-row > label#maskFeatherControl.precision-row {
@@ -15098,6 +15111,7 @@ body.is-settings-workspace-active > .app-shell {
   flex: 0 0 31% !important;
   box-sizing: border-box !important;
   transform: none !important;
+  order: 1 !important;
 }
 
 #editorWorkspace > section.output-card.workflow-card > div.parameter-row > div.parameter-field > span {
