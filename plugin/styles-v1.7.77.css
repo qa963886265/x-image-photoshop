@@ -15083,19 +15083,19 @@ body.is-settings-workspace-active > .app-shell {
   margin: 0 !important;
 }
 
-#editorWorkspace > section.prompt-card > div.prompt-actions-row > #optimizePromptToggle,
-#editorWorkspace > section.prompt-card > div.prompt-actions-row > #precisionPlacementToggle,
-#editorWorkspace > section.prompt-card > div.prompt-actions-row > #maskFeatherControl {
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > label#optimizePromptToggle.prompt-optimizer-toggle,
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > label#precisionPlacementToggle.precision-row,
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > label#maskFeatherControl.precision-row {
   position: relative !important;
-  width: 100% !important;
+  width: 31% !important;
   min-width: 0 !important;
-  max-width: none !important;
+  max-width: 31% !important;
   height: 28px !important;
   min-height: 28px !important;
   max-height: 28px !important;
   margin: 0 !important;
   padding: 0 4px !important;
-  flex: 1 1 30% !important;
+  flex: 0 0 31% !important;
   box-sizing: border-box !important;
   transform: none !important;
 }
