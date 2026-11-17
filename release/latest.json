@@ -1,7 +1,7 @@
 {
-  "version": "1.10.15",
-  "tag": "v1.10.15",
-  "asset": "x-image-photoshop-v1.10.15.zip",
-  "title": "即杏智绘 v1.10.15",
-  "notes": "- 修复 Photoshop UXP 面板不支持 Grid 导致收藏与开关行不显示的问题。\r\n- 合并收藏按钮与提示词选择器并收紧宽度，开关排列在下方。"
+  "version": "1.10.16",
+  "tag": "v1.10.16",
+  "asset": "x-image-photoshop-v1.10.16.zip",
+  "title": "即杏智绘 v1.10.16",
+  "notes": "- 收藏按钮与提示词选择器合并为紧凑控件并单独占一行。\r\n- 三个开关保持在下一行，间距更紧凑。"
 }
