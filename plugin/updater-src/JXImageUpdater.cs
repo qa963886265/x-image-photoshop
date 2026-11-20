@@ -16,8 +16,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("即杏智绘 Photoshop 插件更新程序")]
 [assembly: AssemblyCompany("即杏智绘项目团队")]
 [assembly: AssemblyProduct("即杏智绘")]
-[assembly: AssemblyVersion("1.10.34.0")]
-[assembly: AssemblyFileVersion("1.10.34.0")]
+[assembly: AssemblyVersion("1.10.35.0")]
+[assembly: AssemblyFileVersion("1.10.35.0")]
 
 namespace JXImageUpdater
 {
@@ -99,7 +99,7 @@ namespace JXImageUpdater
         private static void LaunchElevatedCopy()
         {
             string installDirectory = FindInstalledPluginDirectory();
-            string tempDirectory = Path.Combine(Path.GetTempPath(), "JXImageUpdater-" + Guid.NewGuid().ToString("N"));
+            string tempDirectory = Path.Combine(Path.GetTempPath(), "jx-" + Path.GetRandomFileName());
             Directory.CreateDirectory(tempDirectory);
             string tempExecutable = Path.Combine(tempDirectory, "JXImageUpdater.exe");
             File.Copy(Assembly.GetExecutingAssembly().Location, tempExecutable, true);
@@ -130,10 +130,10 @@ namespace JXImageUpdater
                 return;
             }
 
-            string workDirectory = Path.Combine(Path.GetTempPath(), "JXImageUpdateWork-" + Guid.NewGuid().ToString("N"));
+            string workDirectory = Path.Combine(Path.GetTempPath(), "jx-" + Path.GetRandomFileName());
             Directory.CreateDirectory(workDirectory);
             string packagePath = Path.Combine(workDirectory, release.AssetName);
-            string extractedDirectory = Path.Combine(workDirectory, "extracted");
+            string extractedDirectory = Path.Combine(workDirectory, "p");
             string photoshopPath = FindPhotoshopExecutable();
             try
             {

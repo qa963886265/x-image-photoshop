@@ -1,7 +1,7 @@
 {
-  "version": "1.10.34",
-  "tag": "v1.10.34",
-  "asset": "x-image-photoshop-v1.10.34.zip",
-  "title": "即杏智绘 v1.10.34",
-  "notes": "- 更新修图面板布局、下拉菜单与提示词优化预览。\n- 加入参考图识别、自动框选和修图结果原位回填；支持 Seedream 5.5。\n- 公开包不附带自用识别模型；已有模型可放到 %LOCALAPPDATA%\\JXImagePhotoshop\\auto-selection。"
+  "version": "1.10.35",
+  "tag": "v1.10.35",
+  "asset": "x-image-photoshop-v1.10.35.zip",
+  "title": "即杏智绘 v1.10.35",
+  "notes": "- 修复 Windows 在线更新解压时路径过长；旧版本可直接检查更新。"
 }

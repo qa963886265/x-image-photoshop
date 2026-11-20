@@ -1,0 +1,17 @@
+01-LICENSE.txt	LICENSE.txt
+02-LICENSE.txt	numpy/_core/include/numpy/libdivide/LICENSE.txt
+03-COPYING	numpy/_core/src/common/pythoncapi-compat/COPYING
+04-LICENSE	numpy/_core/src/highway/LICENSE
+05-dragon4_LICENSE.txt	numpy/_core/src/multiarray/dragon4_LICENSE.txt
+06-LICENSE.md	numpy/_core/src/npysort/x86-simd-sort/LICENSE.md
+07-LICENSE	numpy/_core/src/umath/svml/LICENSE
+08-LICENSE.md	numpy/fft/pocketfft/LICENSE.md
+09-LICENSE.txt	numpy/linalg/lapack_lite/LICENSE.txt
+10-LICENSE	numpy/ma/LICENSE
+11-LICENSE.md	numpy/random/LICENSE.md
+12-LICENSE.md	numpy/random/src/distributions/LICENSE.md
+13-LICENSE.md	numpy/random/src/mt19937/LICENSE.md
+14-LICENSE.md	numpy/random/src/pcg64/LICENSE.md
+15-LICENSE.md	numpy/random/src/philox/LICENSE.md
+16-LICENSE.md	numpy/random/src/sfc64/LICENSE.md
+17-LICENSE.md	numpy/random/src/splitmix64/LICENSE.md
