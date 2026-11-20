@@ -49,3 +49,8 @@ API Key 保存在 UXP 安全存储中，发布包不包含用户账户密钥。�
 即杏智绘由即杏智绘项目团队开发与维护。模型和接口负责生成图片，具体可用性由服务方提供。
 
 部分界面素材来自 `animal-island-ui`，来源与许可见 [第三方素材说明](THIRD_PARTY_NOTICES.md)；改动见 [更新日志](更新日志.md)。
+
+
+## 本地自动框选
+
+公开安装包包含 Windows 识别程序。将已合法取得并兼容的服装解析模型 `model_quantized.onnx` 放到 `%LOCALAPPDATA%\JXImagePhotoshop\auto-selection\`。该目录独立于插件安装目录，在线更新时不会被覆盖。未配置模型时仍可手动框选并修图。

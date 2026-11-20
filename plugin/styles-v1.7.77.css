@@ -2772,10 +2772,10 @@ button {
 }
 
 .island-select-aspectRatio .island-select-option {
-  width: 33.333%;
+  width: 25%;
   padding-right: 4px;
   padding-left: 4px;
-  flex: 0 0 33.333%;
+  flex: 0 0 25%;
   justify-content: center;
   font-size: 9px;
   text-align: center;
@@ -3100,7 +3100,8 @@ button {
   margin-right: 0;
 }
 
-#run {
+#run,
+#autoRepairRun {
   border-color: #079786;
   color: #ffffff;
   background:
@@ -10965,8 +10966,6 @@ body {
   line-height: 24px !important;
 }
 
-/* Let the document and shell end with the actual content so the host does not
-   show a colored tail below the history pagination. */
 html,
 body {
   height: auto !important;
@@ -10980,7 +10979,8 @@ body {
 
 .app-shell {
   height: auto !important;
-  min-height: 0 !important;
+  min-height: 100vh !important;
+  box-sizing: border-box !important;
   max-height: none !important;
   background-color: #84c9a0 !important;
   background-image:
@@ -10990,8 +10990,6 @@ body {
   background-size: cover !important;
 }
 
-/* Keep the root canvas transparent so the host background is visible after
-   the content shell ends. */
 html {
   background: transparent !important;
 }
@@ -11438,7 +11436,8 @@ html {
   padding-left: 3px !important;
 }
 
-#editorClear {
+#editorClear,
+#autoRepairDetect {
   border-color: #d0a26b !important;
   color: #805c33 !important;
   background: linear-gradient(180deg, #fff7e9 0%, #ffe2bd 100%) !important;
@@ -13663,6 +13662,14 @@ body.is-library-workspace-active > .app-shell > #styleLibraryWorkspace > .style-
 }
 
 /* Compact ratio menu: size and opening direction are bounded by the host. */
+#editorWorkspace .prompt-editor-shell.is-covered-by-ratio-menu {
+  visibility: hidden !important;
+}
+
+#editorWorkspace .prompt-editor-shell.is-covered-by-ratio-menu > textarea {
+  display: none !important;
+}
+
 #editorWorkspace .island-select-aspectRatio > .island-select-menu {
   padding: 4px !important;
   border: 1px solid #dfbd51 !important;
@@ -14176,12 +14183,6 @@ body.is-library-workspace-active > .app-shell > #styleLibraryWorkspace > .style-
   border: 0 !important;
   border-radius: 7px !important;
   box-sizing: border-box !important;
-}
-
-/* Short settings sections still need the patterned canvas across the entire
-   host viewport. Use a minimum so longer sections can continue scrolling. */
-body.is-settings-workspace-active > .app-shell {
-  min-height: 100vh !important;
 }
 
 /* Settings layout polish: equal tabs, readable two-column parameter grid. */
@@ -15130,7 +15131,413 @@ body.is-settings-workspace-active > .app-shell {
   padding-top: 0 !important;
 }
 
+#editorWorkspace > .output-card > .auto-repair-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+
+#editorWorkspace > .auto-repair-controls > select,
+#editorWorkspace > .auto-repair-controls > button {
+  flex: 1 1 0;
+  height: 30px;
+  min-width: 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+#editorWorkspace > .output-card > .auto-repair-controls > button {
+  padding-left: 10px;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+
 @keyframes prompt-review-expand {
   from { max-height: 0; opacity: 0; transform: translateY(-4px); }
   to { max-height: 340px; opacity: 1; transform: translateY(0); }
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > #editorMoreToggle {
+  order: 1 !important;
+  margin: 0 0 0 auto !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 54px !important;
+  height: 28px !important;
+  padding: 0 8px !important;
+  border: 1px solid #dfbd51 !important;
+  border-radius: 6px !important;
+  background: #fff0a9 !important;
+  color: #654b2e !important;
+}
+
+#editorWorkspace > .prompt-card {
+  --editor-action-height: 29px;
+  --editor-row-spacing: 3px;
+  row-gap: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  position: relative;
+  margin: var(--editor-row-spacing) 0 0 !important;
+  row-gap: 0 !important;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+#editorWorkspace #editorMorePanel.is-hidden {
+  display: none !important;
+}
+
+#editorWorkspace #editorMorePanel.is-select-open,
+#editorWorkspace #editorMorePanel > .is-select-open-row {
+  z-index: 5100 !important;
+}
+
+#editorWorkspace #editorMorePanel > div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 29px !important;
+  min-height: 29px !important;
+  max-height: 29px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  gap: 4px !important;
+  margin: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel > div + div {
+  margin-top: var(--editor-row-spacing) !important;
+}
+
+#editorWorkspace #editorMorePanel > div > :not(.native-select-control) {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel > div > :last-child {
+  margin-right: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel .parameter-field > span {
+  display: none !important;
+}
+
+#editorWorkspace #editorMorePanel .parameter-row {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+#editorWorkspace #editorMorePanel .parameter-row > .model-field {
+  flex-grow: 1.35 !important;
+}
+
+#editorWorkspace #editorMorePanel .island-select-control,
+#editorWorkspace #editorMorePanel .island-select-trigger {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel .auto-repair-controls {
+  z-index: 21;
+  padding: 0;
+  gap: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel .auto-repair-controls > :not(.native-select-control):not(:last-child) {
+  margin-right: 4px !important;
+}
+
+#editorWorkspace #editorMorePanel .auto-repair-controls > .island-select-control {
+  box-sizing: border-box;
+  padding: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel .auto-repair-controls > .island-select-control > .island-select-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+#editorWorkspace #editorMorePanel .island-select-trigger,
+#editorWorkspace #editorMorePanel .auto-repair-controls > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: var(--editor-action-height, 29px);
+  min-height: var(--editor-action-height, 29px);
+  max-height: var(--editor-action-height, 29px);
+  padding: 0 4px;
+  border-width: 1px;
+  border-radius: 7px;
+  box-shadow: none;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+#editorWorkspace #editorMorePanel .island-select-trigger {
+  border-color: #b9d8ce;
+  background: #fffdf5;
+}
+
+#editorWorkspace #editorMorePanel .island-select-control.is-open > .island-select-trigger {
+  border-color: var(--teal);
+  background: #fff;
+}
+
+#editorWorkspace #editorMorePanel .island-select-value {
+  flex: 0 1 auto;
+  font-weight: 800;
+  text-align: center;
+}
+
+#editorWorkspace #editorMorePanel .island-select-arrow {
+  display: block;
+  width: 8px;
+  height: 12px;
+  margin-left: 3px;
+  flex: 0 0 8px;
+  color: #657b72;
+  background: transparent;
+  font-size: 10px;
+  line-height: 12px;
+  text-align: center;
+}
+
+#editorWorkspace #editorMorePanel .island-select-arrow::before {
+  content: none;
+}
+
+#editorWorkspace #editorMorePanel .island-select-control.is-open .island-select-arrow {
+  transform: rotate(180deg);
+}
+
+#editorWorkspace #editorMorePanel .island-select-menu {
+  margin-top: 3px;
+  padding: 4px;
+  border-width: 1px;
+  border-radius: 7px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#editorWorkspace #editorMorePanel .island-select-option {
+  flex-shrink: 0;
+  min-height: 26px;
+  margin: 0;
+  padding: 0 5px;
+  border-radius: 5px;
+}
+
+#editorWorkspace #editorMorePanel .island-select-modelChannel .island-select-option {
+  white-space: normal;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row {
+  flex-wrap: nowrap !important;
+  column-gap: 0 !important;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > .favorite-prompt-control {
+  flex: 1 1 107px !important;
+  width: auto !important;
+  min-width: 107px !important;
+  margin: 0 4px 0 0 !important;
+}
+
+#editorWorkspace > section.prompt-card > div.prompt-actions-row > .favorite-prompt-control > #favoritePrompt {
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  flex: 0 0 28px !important;
+  padding: 0 !important;
+}
+
+#favoritePrompt .favorite-heart {
+  font-family: "Segoe UI Symbol", sans-serif;
+  font-size: 18px;
+  line-height: 1;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .favorite-prompt-control .island-select-promptLibrary .island-select-value {
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .favorite-prompt-control .island-select-promptLibrary .island-select-trigger {
+  padding: 0 3px !important;
+  gap: 0 !important;
+  justify-content: center !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .favorite-prompt-control > .prompt-library-slot {
+  flex: 1 1 0 !important;
+  width: 0 !important;
+  padding: 0 !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .favorite-prompt-control .island-select-promptLibrary .island-select-arrow {
+  width: 10px !important;
+  min-width: 10px !important;
+  flex: 0 0 10px !important;
+  margin-left: 2px !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > #editorMoreToggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 53px !important;
+  width: 53px !important;
+  min-width: 53px !important;
+  border: 1px solid #cdbfa6 !important;
+  margin: 0 0 0 4px !important;
+  padding: 0 3px !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > #editorMoreToggle > span {
+  flex: 0 0 auto;
+  display: block;
+  width: auto !important;
+  min-width: 2em !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .prompt-inline-switches {
+  display: flex !important;
+  flex: 0 1 206px !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  align-items: stretch;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .prompt-inline-switches > label.precision-row {
+  display: flex !important;
+  position: relative !important;
+  inset: auto !important;
+  transform: none !important;
+  flex: 1 1 0 !important;
+  width: 0 !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px !important;
+  max-width: none !important;
+  height: 28px;
+  margin: 0 4px 0 0 !important;
+  padding: 0 2px !important;
+  box-sizing: border-box;
+  border: 1px solid #cdbfa6 !important;
+  border-radius: 6px;
+  background: #fffdf5;
+  white-space: nowrap;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .prompt-inline-switches > label#optimizePromptToggle {
+  margin-right: 0 !important;
+  flex: 0 0 81px !important;
+  min-width: 71px !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .prompt-inline-switches > label#maskFeatherControl {
+  flex: 0 0 48px !important;
+  min-width: 46px !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .prompt-inline-switches .prompt-optimizer-switch {
+  border-radius: 4px !important;
+  width: 18px !important;
+  min-width: 18px !important;
+  height: 11px !important;
+  min-height: 11px !important;
+  max-height: 11px !important;
+  flex: 0 0 18px !important;
+  margin: 0 2px 0 0 !important;
+  padding: 1px !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .prompt-inline-switches .prompt-optimizer-knob {
+  border-radius: 3px !important;
+  width: 7px !important;
+  height: 7px !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row > .prompt-inline-switches .prompt-optimizer-input:checked + .prompt-optimizer-switch .prompt-optimizer-knob {
+  left: 7px !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-editor-actions {
+  display: flex;
+  margin: var(--editor-row-spacing) 0 0 !important;
+}
+
+#editorWorkspace > .prompt-card > .prompt-actions-row,
+#editorWorkspace > .prompt-card > .prompt-editor-actions,
+#editorWorkspace > .prompt-card > #editorMorePanel {
+  left: 0 !important;
+}
+
+#editorWorkspace .prompt-editor-actions > button {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: var(--editor-action-height, 29px);
+  min-height: var(--editor-action-height, 29px);
+  margin: 0 4px 0 0;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-width: 1px;
+  border-radius: 6px;
+  box-shadow: none;
+  line-height: 27px;
+  white-space: nowrap;
+}
+
+#editorWorkspace .prompt-editor-actions > button:last-child {
+  margin-right: 0;
+}
+
+select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+html, body, body * {
+  scrollbar-width: none !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+body *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

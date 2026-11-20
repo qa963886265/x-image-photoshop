@@ -4,6 +4,8 @@ const photoshop = require("photoshop");
 const uxp = require("uxp");
 const { API_CONFIG, UPDATE_CONFIG, MODEL_CONFIGS } = require("./lib/constants.js");
 const { createStyleLibraryUpdater, sha256Hex } = require("./lib/style-library-updates.js");
+const { defaultRepairPrompt, createLocalSelectionClient, resolveReferencePart, PART_LABELS } = require("./lib/auto-selection.js");
+let automaticInsertionTail = Promise.resolve();
 let GPT_IMAGE2_STYLE_LIBRARY = null;
 const {
   clampBounds,
@@ -304,7 +306,7 @@ function cacheElements() {
   const ids = [
     "appShell", "pluginVersion", "brandSettingsOpen", "settingsWorkspaceTab", "workspaceTabs",
     "referenceStrip", "referenceList", "referenceAddWrap", "referenceAdd", "referenceSourceMenu", "referenceQuickActions", "referenceQuickLayer", "referenceQuickSelection", "referenceQuickClear",
-    "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
+    "autoRepairPart", "autoRepairDetect", "autoRepairRun", "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
     "precisionPlacement", "precisionPlacementToggle", "optimizePromptBeforeRun", "optimizePromptToggle", "prompt", "promptCount", "promptMentionMenu", "promptContinuationCapture", "promptContinuationCaret", "modelChannel", "aspectRatio", "resolution", "generationCount",
     "resolvedDimensions", "run", "stop", "editorClear", "insert", "resultStage", "resultEmpty", "resultImage",
     "resultPreviewOverlay", "resultPreviewViewport", "resultPreviewImage", "resultPreviewClose", "resultPreviewSave", "resultPreviewCopyPrompt", "resultPreviewResolution",
@@ -671,6 +673,17 @@ function dispatchSelectChange(select) {
 
 function closeIslandSelect(control, restoreFocus) {
   if (!control) return;
+  if (control.coveredPrompt) {
+    control.coveredPrompt.classList.remove("is-covered-by-ratio-menu");
+    control.coveredPrompt = null;
+  }
+  if (control.root.classList.contains("is-open")) {
+    const panel = control.root.closest("#editorMorePanel");
+    if (panel) {
+      panel.classList.remove("is-select-open");
+      panel.querySelector(".is-select-open-row")?.classList.remove("is-select-open-row");
+    }
+  }
   control.root.classList.remove("is-open");
   control.menu.classList.add("is-hidden");
   control.trigger.setAttribute("aria-expanded", "false");
@@ -715,13 +728,14 @@ function focusIslandOption(control, direction) {
 function openIslandSelect(select, control, focusOption) {
   if (!select || !control || select.disabled) return;
   closeAllIslandSelects(control);
+  if (select === elements.promptLibrary) setEditorMoreOpen(false);
   refreshIslandSelect(select, true);
   control.root.classList.add("is-open");
   control.menu.classList.remove("is-hidden");
   control.trigger.setAttribute("aria-expanded", "true");
   const outputCard = control.root.closest(".output-card");
   if (outputCard && select === elements.aspectRatio) outputCard.classList.add("is-select-open");
-  // Anchor below the picker while matching both edges of the prompt section.
+  // Anchor above the picker while matching both edges of the prompt section.
   if (select === elements.promptLibrary) {
     control.root.style.setProperty("position", "relative", "important");
     control.root.style.setProperty("width", "100%", "important");
@@ -747,12 +761,13 @@ function openIslandSelect(select, control, focusOption) {
     control.menu.style.setProperty("max-width", "none", "important");
     const promptRowCount = Math.max(1, Math.min(MAX_FAVORITE_PROMPTS,
       Array.from(control.menu.children || []).filter((item) => item.classList.contains("island-select-option")).length));
-    control.menu.style.setProperty("height", `${promptRowCount * 20 + 7}px`, "important");
     control.menu.style.setProperty("min-height", "0px", "important");
+    const height = promptRowCount * 20 + 7;
+    control.menu.style.setProperty("height", `${height}px`, "important");
     control.menu.style.setProperty("max-height", `${MAX_FAVORITE_PROMPTS * 20 + 7}px`, "important");
     control.menu.style.setProperty("margin", "0", "important");
     control.menu.style.setProperty("padding", "3px 3px 2px", "important");
-    control.menu.style.setProperty("overflow-y", "hidden", "important");
+    control.menu.style.setProperty("overflow", "hidden", "important");
     control.menu.style.setProperty("box-sizing", "border-box", "important");
     control.menu.style.setProperty("border", "1px solid #dfbd51", "important");
     control.menu.style.setProperty("border-radius", "6px", "important");
@@ -767,24 +782,45 @@ function openIslandSelect(select, control, focusOption) {
     }
     control.menu.appendChild(bottomSpace);
   }
-  if (select === elements.aspectRatio) {
+  const isRatioMenu = select === elements.aspectRatio;
+  const morePanel = control.root.closest("#editorMorePanel");
+  if (morePanel) {
+    morePanel.classList.add("is-select-open");
+    control.root.closest(".parameter-row, .auto-repair-controls")?.classList.add("is-select-open-row");
+  }
+  if (isRatioMenu || morePanel) {
     const bounds = control.root.getBoundingClientRect();
-    const viewportHeight = Number(window.innerHeight) || document.documentElement.clientHeight;
-    const viewportWidth = Number(window.innerWidth) || document.documentElement.clientWidth;
-    const optionCount = Array.from(select.options || []).filter((option) => !option.hidden).length;
-    const menuHeight = (1 + Math.ceil(Math.max(0, optionCount - 1) / 3)) * 26 + 10;
-    const spaceBelow = Math.max(0, viewportHeight - bounds.bottom - 8);
-    const spaceAbove = Math.max(0, bounds.top - 8);
-    const openAbove = menuHeight > spaceBelow && spaceAbove > spaceBelow;
-    const menuWidth = Math.max(1, Math.min(240, viewportWidth - 16));
-    const menuLeft = Math.max(8, Math.min(bounds.left, viewportWidth - menuWidth - 8));
-    control.menu.style.setProperty("top", openAbove ? "auto" : "calc(100% + 4px)", "important");
-    control.menu.style.setProperty("bottom", openAbove ? "calc(100% + 4px)" : "auto", "important");
-    control.menu.style.setProperty("left", `${menuLeft - bounds.left}px`, "important");
-    control.menu.style.setProperty("right", "auto", "important");
-    control.menu.style.setProperty("width", `${menuWidth}px`, "important");
-    control.menu.style.setProperty("max-height", `${openAbove ? spaceAbove : spaceBelow}px`, "important");
-    control.menu.style.setProperty("margin", "0", "important");
+    const visual = window.visualViewport;
+    const root = document.documentElement;
+    const visibleSize = (...sizes) => Math.min(...sizes.map(Number).filter((size) => size > 0 && Number.isFinite(size)));
+    const viewportWidth = visibleSize(window.innerWidth, root.clientWidth, visual && visual.width);
+    const viewportTop = Number(visual && visual.offsetTop) || 0;
+    const viewportLeft = Number(visual && visual.offsetLeft) || 0;
+    const spaceAbove = Math.max(0, bounds.top - viewportTop - 8);
+    const style = control.menu.style;
+    style.removeProperty("width");
+    style.removeProperty("min-width");
+    style.setProperty("top", "auto", "important");
+    style.setProperty("bottom", "100%", "important");
+    style.setProperty("max-height", "none", "important");
+    const naturalWidth = isRatioMenu ? 240 : Math.max(select === elements.modelChannel ? 166 : 0, control.menu.getBoundingClientRect().width, bounds.width);
+    const menuWidth = Math.max(1, Math.min(naturalWidth || bounds.width, viewportWidth - 16));
+    const menuLeft = Math.max(viewportLeft + 8, Math.min(bounds.left, viewportLeft + viewportWidth - menuWidth - 8));
+    style.setProperty("left", `${menuLeft - bounds.left}px`, "important");
+    style.setProperty("right", "auto", "important");
+    style.setProperty("width", `${menuWidth}px`, "important");
+    style.setProperty("min-width", "0", "important");
+    style.setProperty("bottom", "calc(100% + 4px)", "important");
+    style.setProperty("max-height", `${spaceAbove}px`, "important");
+    style.setProperty("margin", "0", "important");
+    control.menu.scrollTop = 0;
+  }
+  if (morePanel || isRatioMenu) {
+    const prompt = document.querySelector("#editorWorkspace .prompt-editor-shell");
+    if (prompt) {
+      control.coveredPrompt = prompt;
+      prompt.classList.add("is-covered-by-ratio-menu");
+    }
   }
   if (select === elements.resolution) {
     refreshLivePricing("resolution-menu").catch(() => {});
@@ -817,7 +853,7 @@ function refreshIslandSelect(select, rebuildOptions) {
   control.trigger.disabled = Boolean(select.disabled);
   control.root.classList.toggle("is-disabled", Boolean(select.disabled));
   control.value.textContent = select === elements.promptLibrary
-    ? "选择提示词"
+    ? "选择提词"
     : (selectedOption ? selectedOption.getAttribute("data-short-label") || selectedOption.textContent : "请选择");
   control.value.title = selectedOption ? (selectedOption.title || selectedOption.textContent) : "请选择";
 
@@ -882,6 +918,7 @@ function initializeIslandSelects() {
     elements.aspectRatio,
     elements.resolution,
     elements.generationCount,
+    elements.autoRepairPart,
     elements.outfitModelChannel,
     elements.outfitResolution,
     elements.outfitGenerationCount,
@@ -905,20 +942,15 @@ function initializeIslandSelects() {
     trigger.setAttribute("aria-expanded", "false");
     const value = document.createElement("span");
     value.className = "island-select-value";
-    const arrow = document.createElement("span");
-    arrow.className = "island-select-arrow";
-    arrow.setAttribute("aria-hidden", "true");
-    if (select === elements.promptLibrary) arrow.textContent = "\u25be";
     const menu = document.createElement("div");
     menu.className = "island-select-menu is-hidden";
     menu.setAttribute("role", "listbox");
     menu.setAttribute("aria-label", select.getAttribute("aria-label") || select.id);
     trigger.appendChild(value);
-    trigger.appendChild(arrow);
     root.appendChild(trigger);
     root.appendChild(menu);
     select.parentNode.insertBefore(root, select.nextSibling);
-    const control = { root, trigger, value, arrow, menu, select };
+    const control = { root, trigger, value, menu, select };
     islandSelectControls.set(select, control);
 
     root.addEventListener("click", (event) => event.stopPropagation());
@@ -1255,6 +1287,11 @@ function updateControls() {
   // the operation can start; disabling this button makes UXP swallow the
   // click entirely, leaving the reference area looking dead.
   elements.referenceAdd.disabled = full;
+  const hasAutoReference = state.references.some((reference) => reference.snapshot &&
+    (reference.snapshot.autoSelection || reference === state.references[0] && reference.mode === "layer"));
+  if (elements.autoRepairPart) elements.autoRepairPart.disabled = busy;
+  if (elements.autoRepairDetect) elements.autoRepairDetect.disabled = busy || (full && !hasAutoReference);
+  if (elements.autoRepairRun) elements.autoRepairRun.disabled = busy || state.runSubmissionPending || state.generationJobs.length > 0 || (full && !hasAutoReference);
   elements.referenceFromSelection.disabled = full;
   elements.referenceFromLayer.disabled = full;
   elements.referenceFromLocal.disabled = full;
@@ -1264,17 +1301,6 @@ function updateControls() {
   elements.run.disabled = busy || state.runSubmissionPending || state.generationJobs.length >= MAX_ACTIVE_JOBS;
   if (elements.editorClear) elements.editorClear.disabled = busy || state.generationJobs.length > 0 || (!state.references.length && !getPromptValue());
   elements.insert.disabled = busy || !selectedResult;
-  const editorActionRow = elements.run && elements.run.parentElement;
-  if (editorActionRow) {
-    editorActionRow.style.setProperty("position", "relative", "important");
-    editorActionRow.style.setProperty("top", "0", "important");
-    editorActionRow.style.setProperty("transform", "translateY(-3px)", "important");
-    Array.from(editorActionRow.querySelectorAll("button")).forEach((button) => {
-      button.style.setProperty("position", "static", "important");
-      button.style.setProperty("top", "0", "important");
-      button.style.setProperty("transform", "none", "important");
-    });
-  }
   const generationCanStop = state.generationJobs.some((job) => !job.controller.signal.aborted);
   const historyCanStop = Boolean(
     state.recoveringPendingHistory && pendingHistoryRecoveryController &&
@@ -1423,7 +1449,9 @@ function updateFavoriteButton() {
   if (!elements.favoritePrompt || !elements.prompt) return;
   const prompt = getPromptValue().trim();
   const saved = Boolean(prompt) && state.favoritePrompts.includes(prompt);
-  elements.favoritePrompt.textContent = saved ? "已收藏" : "收藏";
+  elements.favoritePrompt.querySelector(".favorite-heart").textContent = saved ? "\u2665" : "\u2661";
+  elements.favoritePrompt.setAttribute("aria-pressed", String(saved));
+  elements.favoritePrompt.title = saved ? "取消收藏" : "收藏提示词";
   elements.favoritePrompt.classList.toggle("is-saved", saved);
 }
 
@@ -4146,12 +4174,20 @@ function syncResolutionOptions(control, model, preferredValue) {
 
 function syncModelCapabilities() {
   const model = getSelectedModelConfig();
-  Array.from(elements.aspectRatio.options || []).forEach((option) => {
-    option.disabled = option.value !== "auto" && !model.supportedRatios.includes(option.value);
-  });
-  if (elements.aspectRatio.value !== "auto" && !model.supportedRatios.includes(elements.aspectRatio.value)) {
-    elements.aspectRatio.value = "auto";
+  const ratioControl = elements.aspectRatio;
+  const requestedRatio = ratioControl.value;
+  const ratios = ["auto", ...model.supportedRatios];
+  const currentRatios = Array.from(ratioControl.options || []);
+  if (currentRatios.length !== ratios.length || currentRatios.some((option, index) => option.value !== ratios[index])) {
+    currentRatios.filter((option) => option.value !== "auto").forEach((option) => ratioControl.removeChild(option));
+    model.supportedRatios.forEach((ratio) => {
+      const option = document.createElement("option");
+      option.value = ratio;
+      option.textContent = ratio;
+      ratioControl.appendChild(option);
+    });
   }
+  ratioControl.value = ratios.includes(requestedRatio) ? requestedRatio : "auto";
   syncResolutionOptions(elements.resolution, model);
   syncResolutionOptions(elements.outfitResolution, model, elements.resolution.value);
   syncResolutionOptions(elements.productResolution, model);
@@ -4930,6 +4966,9 @@ function serializeSnapshot(snapshot, maskFileName) {
     sourcePixelWidth: Number(snapshot.sourcePixelWidth) || 0,
     sourcePixelHeight: Number(snapshot.sourcePixelHeight) || 0,
     editBounds: storageBounds(snapshot.editBounds),
+    autoSelection: snapshot.autoSelection && Object.prototype.hasOwnProperty.call(PART_LABELS, snapshot.autoSelection.part)
+      ? { part: snapshot.autoSelection.part, autoInsert: Boolean(snapshot.autoSelection.autoInsert) }
+      : null,
     localEditMode: LOCAL_EDIT_MODES.includes(String(snapshot.localEditMode || ""))
       ? String(snapshot.localEditMode)
       : "",
@@ -4989,6 +5028,9 @@ function deserializeSnapshot(value, maskBytes, maskUnavailable) {
     sourcePixelWidth: Number(value.sourcePixelWidth) || 0,
     sourcePixelHeight: Number(value.sourcePixelHeight) || 0,
     editBounds: storageBounds(value.editBounds),
+    autoSelection: value.autoSelection && Object.prototype.hasOwnProperty.call(PART_LABELS, value.autoSelection.part)
+      ? { part: value.autoSelection.part, autoInsert: Boolean(value.autoSelection.autoInsert) }
+      : null,
     localEditMode: LOCAL_EDIT_MODES.includes(String(value.localEditMode || ""))
       ? String(value.localEditMode)
       : "",
@@ -9389,7 +9431,7 @@ async function captureSource(mode, captureOptions) {
   const silentStatus = Boolean(options.silentStatus);
   const sourceSnapshot = options.sourceSnapshot || null;
   if (state.preparingJob || (state.capturing && !batchManaged) || state.inserting) return null;
-  if (state.references.length + 1 > MAX_REFERENCES) {
+  if (state.references.length + (options.replaceReference ? 0 : 1) > MAX_REFERENCES) {
     setStatus("warning", "参考图已满", `最多只能添加 ${MAX_REFERENCES} 张参考图`);
     return null;
   }
@@ -9415,10 +9457,13 @@ async function captureSource(mode, captureOptions) {
       if (!app.documents.length) throw new Error("请先在 Photoshop 中打开一张图片");
       const document = sourceSnapshot
         ? findOpenDocumentForSnapshot(sourceSnapshot)
-        : app.activeDocument;
+        : options.documentId == null
+          ? app.activeDocument
+          : Array.from(app.documents).find((item) => item.id === options.documentId);
       if (!document) {
         throw new Error("没有找到生成时使用的 Photoshop 文档，请先打开原文档后再复用");
       }
+      if (options.validateSource) await options.validateSource(document);
       const documentWidth = Math.round(Number(document.width));
       const documentHeight = Math.round(Number(document.height));
       if (document.artboards && document.artboards.length) {
@@ -9455,8 +9500,9 @@ async function captureSource(mode, captureOptions) {
             throw new Error("原任务记录的图层已不存在，请确认原图层仍在当前 Photoshop 文档中");
           }
         } else if (options.layerId !== null && options.layerId !== undefined) {
-          activeLayer = selectedLayers.find((layer) => Number(layer.id) === Number(options.layerId)) || null;
-          if (!activeLayer) throw new Error("图层选择已经变化，请重新选择后再获取");
+          // Reading a smart object can change the active layer selection.
+          activeLayer = findLayerById(document.layers, options.layerId);
+          if (!activeLayer) throw new Error("所选图层已不存在，请重新选择后再获取");
         } else {
           if (!selectedLayers.length) {
             throw new Error("没有检测到活动图层，请先在图层面板中选择一个或多个图层");
@@ -9468,6 +9514,15 @@ async function captureSource(mode, captureOptions) {
           layerId = activeLayer.id;
           layerName = activeLayer.name || "未命名图层";
           insertionAnchor = activeLayer;
+        }
+      } else if (options.detectedBounds) {
+        rawBounds = options.detectedBounds;
+        solid = true;
+        if (sourceSnapshot && sourceSnapshot.layerId != null) {
+          layerId = sourceSnapshot.layerId;
+          insertionAnchor = findLayerById(document.layers, layerId);
+          if (!insertionAnchor) throw new Error("待修图层已不存在，请重新添加第 1 张图");
+          layerName = insertionAnchor.name || "";
         }
       } else {
         rawBounds = sourceSnapshot
@@ -9494,7 +9549,7 @@ async function captureSource(mode, captureOptions) {
 
       const bounds = clampBounds(rawBounds, documentWidth, documentHeight);
       if (!bounds) throw new Error(mode === "layer" ? "当前图层没有可获取的画布内像素" : "选区没有与画布相交的有效像素区域");
-      const editBounds = mode === "selection" ? bounds : null;
+      let editBounds = mode === "selection" ? bounds : null;
       const captureBounds = sourceSnapshot && sourceSnapshot.bounds
         ? clampBounds(sourceSnapshot.bounds, documentWidth, documentHeight)
         : (mode === "selection"
@@ -9508,7 +9563,10 @@ async function captureSource(mode, captureOptions) {
 
       let mask = null;
       if (mode === "selection") {
-        if (sourceSnapshot && sourceSnapshot.mask && sourceSnapshot.mask.bytes) {
+        if (options.detectedBounds) {
+          // The parser locates the crop; the returned patch uses its rectangle.
+          solid = true;
+        } else if (sourceSnapshot && sourceSnapshot.mask && sourceSnapshot.mask.bytes) {
           const sourceBytes = sourceSnapshot.mask.bytes;
           const owned = new Uint8Array(sourceBytes.byteLength || sourceBytes.length || 0);
           owned.set(sourceBytes);
@@ -9587,7 +9645,10 @@ async function captureSource(mode, captureOptions) {
         // Photoshop may trim transparent or empty pixels from getPixels() when
         // applyAlpha is enabled; using that trimmed sourceBounds here would
         // desynchronise the generated layer from the saved selection mask.
-        await savePixelCapture(document, null, captureBounds, inputFile);
+        const actual = await savePixelCapture(document, layerId, captureBounds, inputFile);
+        if (layerId != null && ["left", "top", "right", "bottom"].some((key) => actual[key] !== captureBounds[key])) {
+          throw new Error("局部图与选区尺寸不一致，请重新框选");
+        }
       }
       const referenceId = `ref-${captureId}`;
       snapshot = {
@@ -9614,6 +9675,7 @@ async function captureSource(mode, captureOptions) {
           : "",
         solid,
         mask,
+        autoSelection: options.autoSelection || null,
         layerId,
         layerName,
         insertionAnchorLayerId,
@@ -9647,14 +9709,24 @@ async function captureSource(mode, captureOptions) {
     };
     await createReferencePreview(reference);
 
-    state.references.push(reference);
+    const priorReferences = options.replaceReference ? state.references.slice() : null;
+    if (options.replaceReference) {
+      const oldIndex = state.references.indexOf(options.replaceReference);
+      if (oldIndex < 0) throw new Error("参考图已变化，请重新框选");
+      state.references.splice(oldIndex, 1, reference);
+    } else state.references.push(reference);
+    if (priorReferences) {
+      priorReferences[priorReferences.indexOf(options.replaceReference)] = reference;
+      syncPromptImageMentions(priorReferences, state.references);
+    }
     const targetReferencePresent = runReferenceMatchesSnapshot(state.references, state.targetSnapshot);
-    const assignedAsTarget = mode === "selection" && options.assignAsTarget !== false && !targetReferencePresent;
+    const assignedAsTarget = mode === "selection" && options.assignAsTarget !== false && (options.forceAsTarget || !targetReferencePresent);
     if (assignedAsTarget) {
       state.targetSnapshot = snapshot;
       elements.precisionPlacement.checked = true;
       keepTargetReferenceFirst();
     }
+    if (options.replaceReference) await releaseReference(options.replaceReference);
     renderReferences();
 
     const primaryReference = getPrimaryReference();
@@ -9724,6 +9796,7 @@ async function captureSelectedLayers(options = {}) {
         const reference = await captureSource("layer", {
           batchManaged: true,
           silentStatus: true,
+          documentId: document.id,
           layerId: layer.id
         });
         if (reference) added.push(reference);
@@ -9740,7 +9813,7 @@ async function captureSelectedLayers(options = {}) {
 
     const notes = [`已按顺序加入参考图区：${added.map((reference) => reference.layerName).join("、")}`];
     if (limitedCount) notes.push(`参考图上限为 ${MAX_REFERENCES} 张，另有 ${limitedCount} 个图层未获取`);
-    if (failed.length) notes.push(`${failed.length} 个图层没有可读取像素，已跳过`);
+    if (failed.length) notes.push(...failed.map(({ name, message }) => `${name}未导入：${sanitizeMessage(message)}`));
     setStatus(
       failed.length || limitedCount ? "warning" : "success",
       `已获取 ${added.length} 个图层`,
@@ -9748,6 +9821,23 @@ async function captureSelectedLayers(options = {}) {
     );
     return added;
   } finally {
+    if (selectedLayers.length > 1) {
+      try {
+        await core.executeAsModal(async () => {
+          if (!app.documents.length || app.activeDocument.id !== document.id) return;
+          const current = Array.from(document.activeLayers || [], (layer) => Number(layer.id));
+          if (current.length === selectedLayers.length && selectedLayers.every(({ id }) => current.includes(id))) return;
+          const surviving = selectedLayers.filter(({ id }) => findLayerById(document.layers, id));
+          if (!surviving.length) return;
+          await batchPlayChecked(surviving.map(({ id }, index) => ({
+            _obj: "select",
+            _target: [{ _ref: "layer", _id: id }],
+            ...(index ? { selectionModifier: { _enum: "selectionModifierType", _value: "addToSelection" } } : {}),
+            makeVisible: false
+          })));
+        }, { commandName: "恢复多选图层" });
+      } catch (_) {}
+    }
     state.capturing = false;
     updateControls();
     if (state.running) renderGenerationQueue();
@@ -12202,6 +12292,21 @@ async function clearActivePixelSelection(document) {
   return true;
 }
 
+function prepareRectangleEditMask(width, height) {
+  // Leave 80% of the rectangle fully opaque.
+  const featherRadius = Math.round((width + height - Math.sqrt((width - height) ** 2 + 3.2 * width * height)) / 4);
+  const bytes = new Uint8Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    const vertical = Math.min(y + 1, height - y);
+    for (let x = 0; x < width; x += 1) {
+      const distance = Math.min(x + 1, width - x, vertical);
+      bytes[row + x] = Math.round(255 * Math.min(1, distance / (featherRadius + 1)));
+    }
+  }
+  return { bytes, featherRadius };
+}
+
 function prepareLocalEditMask(snapshot) {
   if (!snapshot || !snapshot.mask || !snapshot.mask.bytes) {
     return { bytes: null, featherRadius: 0 };
@@ -12364,6 +12469,7 @@ async function insertResult(result, precisePlacement) {
   ) ? state.targetSnapshot : null;
   const preciseBounds = precise
     ? (
+      (snapshot.autoSelection && (storageBounds(snapshot.editBounds) || storageBounds(snapshot.bounds))) ||
       storageBounds(activeTargetSnapshot && activeTargetSnapshot.editBounds) ||
       storageBounds(activeTargetSnapshot && activeTargetSnapshot.bounds) ||
       storageBounds(archivedTargetSnapshot && archivedTargetSnapshot.editBounds) ||
@@ -12396,7 +12502,7 @@ async function insertResult(result, precisePlacement) {
   if (!usedCurrentDocumentFallback && Math.abs((Number(targetDocument.resolution) || 72) - snapshot.documentResolution) > 0.01) {
     throw new Error("原文档分辨率已改变，请重新获取参考图后生成");
   }
-  if (precise && snapshot.maskUnavailable) {
+  if (precise && snapshot.maskUnavailable && !snapshot.autoSelection) {
     throw new Error("这张历史图保存的原选区蒙版已缺失，无法安全地精确回填；可关闭精确放回后插入");
   }
 
@@ -12497,10 +12603,12 @@ async function insertResult(result, precisePlacement) {
         const maskWidth = Math.round(preciseBounds.width);
         const maskHeight = Math.round(preciseBounds.height);
         const maskBounds = preciseBounds;
-        const preparedMask = snapshot.mask
+        const preparedMask = snapshot.autoSelection
+          ? prepareRectangleEditMask(maskWidth, maskHeight)
+          : snapshot.mask
           ? prepareLocalEditMask(snapshot)
           : { bytes: new Uint8Array(maskWidth * maskHeight).fill(255), featherRadius: 0 };
-        const maskBytes = snapshot.mask
+        const maskBytes = snapshot.mask && !snapshot.autoSelection
           ? resizeGrayscaleMask(
             preparedMask.bytes,
             snapshot.mask.width,
@@ -12670,6 +12778,10 @@ async function runGenerationJob(job) {
       renderResultHistory();
     }
     renderGenerationQueue();
+    if (result && result.snapshot && result.snapshot.autoSelection && result.snapshot.autoSelection.autoInsert) {
+      try { await automaticallyInsertRepair(result); }
+      catch (error) { setStatus("warning", "修图已生成，自动回填未完成", (error.message || error) + "；请从历史中手动插入，勿重新生成"); }
+    }
     return result;
   };
 
@@ -13782,7 +13894,215 @@ function bindUxpCheckboxToggle(container, input) {
   syncState();
 }
 
+async function encodeAutoSelectionReference(reference) {
+  const bytes = exactArrayBuffer(await reference.file.read({ format: formats.binary }));
+  const { width: referenceWidth, height: referenceHeight } = detectImageType(bytes);
+  if (bytes.byteLength < 5 * 1024 * 1024 && Math.max(referenceWidth, referenceHeight) <= 2048) {
+    return arrayBufferToBase64(bytes);
+  }
+  return core.executeAsModal(async () => {
+    const sourceDocument = app.activeDocument;
+    const openDocumentIds = new Set(Array.from(app.documents, (document) => document.id));
+    let opened = null;
+    let pixels = null;
+    try {
+      opened = await app.open(reference.file);
+      if (!opened) throw new Error("参考图无法打开");
+      const width = Number(opened.width), height = Number(opened.height);
+      const scale = Math.min(1, 1024 / Math.max(width, height));
+      pixels = await imaging.getPixels({ documentID: opened.id, componentSize: 8, applyAlpha: true,
+        colorSpace: "RGB", colorProfile: "sRGB IEC61966-2.1",
+        sourceBounds: { left: 0, top: 0, right: width, bottom: height },
+        targetSize: { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) } });
+      const encoded = await imaging.encodeImageData({ imageData: pixels.imageData, compression: 0.8, base64: false });
+      return arrayBufferToBase64(exactArrayBuffer(encoded));
+    } finally {
+      if (pixels && pixels.imageData) pixels.imageData.dispose();
+      if (opened && !openDocumentIds.has(opened.id)) await opened.closeWithoutSaving();
+      if (sourceDocument && app.activeDocument.id !== sourceDocument.id) app.activeDocument = sourceDocument;
+    }
+  }, { commandName: "准备白底参考图" });
+}
+
+async function runLocalAutoSelection(part, references, targetReference) {
+  const pluginFolder = await localFileSystem.getPluginFolder();
+  const helperFolder = await pluginFolder.getEntry("auto-selection");
+  const helper = await helperFolder.getEntry("JXAutoSelection");
+  const executable = await helper.getEntry("JXAutoSelectionFile.exe");
+  const executablePath = localFileSystem.getNativePath(executable);
+  if (!executablePath) throw new Error("插件内置识别程序不存在，请重新安装插件");
+  const client = createLocalSelectionClient({
+    folder: await localFileSystem.getDataFolder(),
+    textFormat: formats.utf8,
+    launch: async () => {
+      const launchError = await shell.openPath(executablePath, "本地识别服装和头部，不会上传原图");
+      if (launchError) throw new Error(launchError);
+    },
+    decodeBase64: base64ToArrayBuffer
+  });
+  let source = null;
+  let preview = null;
+  let sourceBounds = null;
+  const targetSnapshot = targetReference && targetReference.snapshot;
+  const sourceLayerId = targetSnapshot && targetSnapshot.layerId != null ? Number(targetSnapshot.layerId) : null;
+  const readPreview = async (document) => {
+    const scale = Math.min(1, 1024 / Math.max(sourceBounds.width, sourceBounds.height));
+    return imaging.getPixels({ documentID: document.id, componentSize: 8, applyAlpha: true,
+      ...(sourceLayerId == null ? {} : { layerID: sourceLayerId }),
+      colorSpace: "RGB", colorProfile: "sRGB IEC61966-2.1",
+      sourceBounds: { left: sourceBounds.left, top: sourceBounds.top, right: sourceBounds.right, bottom: sourceBounds.bottom },
+      targetSize: { width: Math.max(1, Math.round(sourceBounds.width * scale)), height: Math.max(1, Math.round(sourceBounds.height * scale)) } });
+  };
+  await core.executeAsModal(async () => {
+    const document = app.activeDocument;
+    if (sourceLayerId != null && (!document || document.id !== targetSnapshot.documentId)) throw new Error("请切回第 1 张图所在的 Photoshop 文档");
+    const width = Math.round(Number(document.width));
+    const height = Math.round(Number(document.height));
+    if (document.artboards && document.artboards.length) throw new Error("自动修图暂不支持画板，请先使用普通画布");
+    if (isUnsupportedDocumentMode(document.mode)) throw new Error("请先将图片转换为 RGB 模式");
+    source = { documentId: document.id, documentTitle: document.title || document.name || "未命名文档",
+      documentWidth: width, documentHeight: height, documentResolution: Number(document.resolution) || 72,
+      documentMode: document.mode, layerId: sourceLayerId };
+    const layer = sourceLayerId == null ? null : findLayerById(document.layers, sourceLayerId);
+    if (sourceLayerId != null && !layer) throw new Error("待修图层已不存在，请重新添加第 1 张图");
+    sourceBounds = clampBounds(layer ? (layer.boundsNoEffects || layer.bounds) : { left: 0, top: 0, right: width, bottom: height }, width, height);
+    if (!sourceBounds) throw new Error("第 1 张图没有可框选的画布内像素");
+    const captured = await readPreview(document);
+    try {
+      const encoded = await imaging.encodeImageData({ imageData: captured.imageData, compression: 0.8, base64: false });
+      const bytes = encoded instanceof Uint8Array ? encoded : new Uint8Array(encoded);
+      preview = { image: arrayBufferToBase64(exactArrayBuffer(bytes)), fingerprint: sha256Hex(bytes) };
+    } finally { if (captured && captured.imageData) captured.imageData.dispose(); }
+  }, { commandName: "准备自动识别预览" });
+  if (part === "auto") {
+    const parts = [];
+    for (let i = 0; i < references.length; i++) {
+      setStatus("working", "正在识别参考图类别", (i + 1) + " / " + references.length);
+      parts.push(await client.classify(await encodeAutoSelectionReference(references[i])));
+    }
+    part = resolveReferencePart(parts);
+    setStatus("working", "正在框选" + PART_LABELS[part], "已根据参考图确认修图部位");
+  }
+  const result = await client.detect(preview.image, sourceBounds.width, sourceBounds.height, part);
+  const translate = (bounds) => ({ ...bounds,
+    left: bounds.left + sourceBounds.left, right: bounds.right + sourceBounds.left,
+    top: bounds.top + sourceBounds.top, bottom: bounds.bottom + sourceBounds.top });
+  result.bounds = translate(result.bounds);
+  result.target = translate(result.target);
+  result.mask.bounds = result.bounds;
+  const validateSource = async (document) => {
+    if (!document || Number(document.id) !== Number(source.documentId) || !documentMatchesSnapshot(document, source)) throw new Error("识别期间原文档已关闭或画布尺寸变化");
+    const currentBytes = await readPreview(document);
+    try {
+      const encoded = await imaging.encodeImageData({ imageData: currentBytes.imageData, compression: 0.8, base64: false });
+      const bytes = encoded instanceof Uint8Array ? encoded : new Uint8Array(encoded);
+      if (sha256Hex(bytes) !== preview.fingerprint) throw new Error("识别期间图像已改变，请重新识别");
+    } finally { if (currentBytes && currentBytes.imageData) currentBytes.imageData.dispose(); }
+  };
+  await core.executeAsModal(async () => {
+    const document = app.activeDocument;
+    await validateSource(document);
+    await document.selection.selectRectangle({ top: result.bounds.top, left: result.bounds.left,
+      bottom: result.bounds.bottom, right: result.bounds.right }, constants.SelectionType.REPLACE);
+  }, { commandName: "建立自动识别选区" });
+  if (!String(getPromptValue()).trim()) { setPromptValue(defaultRepairPrompt(result.part)); updatePromptCount(); }
+  return { ...result, source, validateSource };
+}
+
+async function handleAutomaticRepair(runAfterDetection = false) {
+  if (referenceMutationBlocked() || state.runSubmissionPending || state.promptOptimizationReview) return;
+  if (runAfterDetection && state.generationJobs.length) {
+    setStatus("warning", "请等待当前任务完成", "本次修复会在生成后自动回填，完成后可继续下一张");
+    return;
+  }
+  const part = String(elements.autoRepairPart.value || "auto");
+  const first = state.references[0];
+  const replacing = first && first.snapshot && (first.snapshot.autoSelection ||
+    state.references.length > 1 && (first.mode === "layer" || first.mode === "selection")) ? first : null;
+  const remainingReferences = state.references.filter((reference) => reference !== replacing && !reference.released && reference.file &&
+    String(reference.id) !== String(state.targetSnapshot && state.targetSnapshot.sourceReferenceId));
+  if (part === "auto" && !remainingReferences.length) {
+    setStatus("warning", "请先添加白底参考图", "添加单品参考图后再自动识别，也可以手动选择要框选的部位");
+    return;
+  }
+  if (runAfterDetection && !remainingReferences.length) {
+    setStatus("warning", "先添加服装或头部参考图", "点击参考图左侧“＋”，从本地添加参考图片后再点一键修图");
+    return;
+  }
+  if (state.references.length >= MAX_REFERENCES && !replacing) {
+    setStatus("warning", "参考图已满", "请移除一张参考图，再开始自动修图");
+    return;
+  }
+  state.capturing = true;
+  updateControls();
+  let captured = null;
+  let detectedPart;
+  try {
+    setStatus("working", "正在本地识别" + (PART_LABELS[part] || ""), "原图不会上传，识别过程中请不要编辑画布");
+    const detected = await runLocalAutoSelection(part, remainingReferences, replacing);
+    detectedPart = detected.part;
+    const sourceSnapshot = { ...detected.source, bounds: detected.bounds, editBounds: detected.bounds, solid: true };
+    captured = await captureSource("selection", {
+      batchManaged: true, silentStatus: true, sourceSnapshot,
+      detectedBounds: detected.bounds,
+      validateSource: detected.validateSource, replaceReference: replacing,
+      forceAsTarget: true,
+      autoSelection: { part: detectedPart, autoInsert: runAfterDetection }
+    });
+    if (!captured) throw new Error("无法截取完整修复区域，请重新识别或扩大画布");
+    elements.precisionPlacement.checked = true;
+    elements.maskFeatherEnabled.checked = true;
+    elements.aspectRatio.value = "auto";
+    elements.generationCount.value = "1";
+    syncIslandSelects();
+    updateResolvedSize();
+    setStatus("success", "已框住" + PART_LABELS[detectedPart],
+      detected.ratio + " · " + detected.bounds.width + "×" + detected.bounds.height + " 原像素；羽化约占选框 20%");
+  } catch (error) {
+    setStatus("error", "自动修图准备失败", error.message || error);
+  } finally { state.capturing = false; updateControls(); }
+  if (captured && runAfterDetection) await handleRun({ skipPromptOptimization: true, promptOverride: defaultRepairPrompt(detectedPart) });
+}
+
+async function automaticallyInsertRepair(result) {
+  if (!result || !result.snapshot || !result.snapshot.autoSelection || !result.snapshot.autoSelection.autoInsert || result.insertedAt) return;
+  const operation = automaticInsertionTail.then(async () => {
+    const deadline = Date.now() + 60000;
+    while (state.capturing || state.inserting || state.preparingJob) {
+      if (Date.now() > deadline) throw new Error("Photoshop 忙碌，结果已保留，可从历史中手动插入");
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    if (!findOpenDocument(result.snapshot.documentId)) throw new Error("原图已关闭，结果已保留；重新打开原图即可插入");
+    state.inserting = true;
+    updateControls();
+    setStatus("working", "正在自动回填", "按原坐标放回，创建头发保护与羽化蒙版");
+    try {
+      const inserted = await insertResult(result, true);
+      result.insertedAt = new Date();
+      result.precisePlacement = inserted.precisePlacement;
+      await queuePersistHistoryState();
+      renderResultHistory();
+    } finally { state.inserting = false; updateControls(); }
+  });
+  automaticInsertionTail = operation.catch(() => {});
+  return await operation;
+}
+
+function setEditorMoreOpen(expanded) {
+  const toggle = document.getElementById("editorMoreToggle");
+  const panel = document.getElementById("editorMorePanel");
+  if (!toggle || !panel) return;
+  panel.classList.toggle("is-hidden", !expanded);
+  toggle.setAttribute("aria-expanded", String(expanded));
+}
+
 function bindEvents() {
+  const moreToggle = document.getElementById("editorMoreToggle");
+  moreToggle.addEventListener("click", () => {
+    const expanded = moreToggle.getAttribute("aria-expanded") !== "true";
+    closeAllIslandSelects(null);
+    setEditorMoreOpen(expanded);
+  });
   bindUxpCheckboxToggle(elements.precisionPlacementToggle, elements.precisionPlacement);
   bindUxpCheckboxToggle(elements.maskFeatherControl, elements.maskFeatherEnabled);
   bindUxpCheckboxToggle(elements.optimizePromptToggle, elements.optimizePromptBeforeRun);
@@ -13818,6 +14138,13 @@ function bindEvents() {
       // captureSource already reports a concise error.
     }
   };
+
+  elements.autoRepairDetect.addEventListener("click", () => {
+    handleAutomaticRepair(false).catch((error) => setStatus("error", "自动框选失败", error.message || error));
+  });
+  elements.autoRepairRun.addEventListener("click", () => {
+    handleAutomaticRepair(true).catch((error) => setStatus("error", "自动修图失败", error.message || error));
+  });
 
   elements.statusClose.addEventListener("mousedown", (event) => {
     event.preventDefault();

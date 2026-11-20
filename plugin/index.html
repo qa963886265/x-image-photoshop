@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title></title>
-  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.14" />
+  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.34" />
   <style>
     #referenceList > #referenceAddWrap {
       position: relative !important;
@@ -57,7 +57,7 @@
           </span>
           <div class="brand-copy">
             <strong id="pluginName" class="plugin-name">即杏智绘</strong>
-            <span id="pluginVersion" class="plugin-version" role="button" tabindex="0" title="检查更新">v1.10.14</span>
+            <span id="pluginVersion" class="plugin-version" role="button" tabindex="0" title="检查更新">v1.10.34</span>
           </div>
         </div>
         <div id="notificationLayer" class="notification-layer is-hidden" aria-live="polite">
@@ -136,35 +136,48 @@
           </section>
         </div>
         <div class="prompt-actions-row" aria-label="提示词工具">
-          <label id="optimizePromptToggle" class="precision-row prompt-optimizer-toggle" for="optimizePromptBeforeRun" role="switch" tabindex="0" aria-checked="false" title="运行前使用参考图和提示词进行优化">
-            <input id="optimizePromptBeforeRun" class="prompt-optimizer-input" type="checkbox" />
-            <span class="prompt-optimizer-switch" aria-hidden="true"><span class="prompt-optimizer-knob"></span></span>
-            <span class="precision-label prompt-optimizer-label">优化提示词</span>
-          </label>
-          <label id="precisionPlacementToggle" class="precision-row" for="precisionPlacement" role="switch" tabindex="0" aria-checked="true" title="精确放回原选区位置、尺寸和蒙版">
-            <input id="precisionPlacement" class="prompt-optimizer-input" type="checkbox" checked />
-            <span class="prompt-optimizer-switch" aria-hidden="true"><span class="prompt-optimizer-knob"></span></span>
-            <span class="precision-label">精确放回</span>
-          </label>
           <div class="favorite-prompt-control">
-            <button id="favoritePrompt" class="utility-button prompt-tool-button" type="button" disabled>收藏</button>
+            <button id="favoritePrompt" class="utility-button prompt-tool-button" type="button" aria-label="收藏提示词" aria-pressed="false" title="收藏提示词" disabled><span class="favorite-heart" aria-hidden="true">&#x2661;</span></button>
             <div class="prompt-library-slot">
               <select id="promptLibrary" aria-label="收藏提示词" disabled>
                 <option value="">暂无收藏提示词</option>
               </select>
             </div>
           </div>
-          <span class="prompt-actions-row-break" aria-hidden="true"></span>
+          <div class="prompt-inline-switches">
           <label id="maskFeatherControl" class="precision-row" for="maskFeatherEnabled" role="switch" tabindex="0" aria-checked="true" title="羽化蒙版：默认50px，可在设置中修改">
             <input id="maskFeatherEnabled" class="prompt-optimizer-input" type="checkbox" checked />
             <span class="prompt-optimizer-switch" aria-hidden="true"><span class="prompt-optimizer-knob"></span></span>
-            <span class="precision-label">羽化蒙版</span>
+            <span class="precision-label">羽化</span>
+          </label>
+          <label id="precisionPlacementToggle" class="precision-row" for="precisionPlacement" role="switch" tabindex="0" aria-checked="true" title="精确放回原选区位置、尺寸和蒙版">
+            <input id="precisionPlacement" class="prompt-optimizer-input" type="checkbox" checked />
+            <span class="prompt-optimizer-switch" aria-hidden="true"><span class="prompt-optimizer-knob"></span></span>
+            <span class="precision-label">精确放回</span>
+          </label>
+          <label id="optimizePromptToggle" class="precision-row prompt-optimizer-toggle" for="optimizePromptBeforeRun" role="switch" tabindex="0" aria-checked="false" title="运行前使用参考图和提示词进行优化">
+            <input id="optimizePromptBeforeRun" class="prompt-optimizer-input" type="checkbox" />
+            <span class="prompt-optimizer-switch" aria-hidden="true"><span class="prompt-optimizer-knob"></span></span>
+            <span class="precision-label prompt-optimizer-label">优化提词</span>
           </label>
 
+          </div>
+          <button id="editorMoreToggle" class="utility-button prompt-tool-button" type="button" aria-expanded="false" aria-controls="editorMorePanel"><span>更多</span></button>
         </div>
-      </section>
-
-      <section class="workflow-card output-card">
+        <div class="prompt-editor-actions">
+          <button id="run" class="primary-button" type="button">运行</button>
+          <button id="editorClear" class="action-button" type="button">清空</button>
+          <button id="insert" class="action-button" type="button" disabled>插入图层</button>
+        </div>
+        <div id="editorMorePanel" class="editor-more-panel is-hidden" role="region" aria-label="更多设置">
+      <div class="auto-repair-controls" aria-label="自动修图">
+          <select id="autoRepairPart" aria-label="自动识别区域">
+            <option value="auto">自动识别</option><option value="head">头</option>
+            <option value="upper">上衣</option><option value="lower">下装</option><option value="shoes">鞋</option>
+          </select>
+          <button id="autoRepairDetect" class="action-button" type="button" title="仅本地识别选区，不生成、不计费">自动框选</button>
+          <button id="autoRepairRun" class="primary-button" type="button" title="请先添加参考图；自动框选、修图并精确回填一张">一键修图</button>
+        </div>
         <div class="parameter-row">
           <div class="parameter-field model-field">
             <span>模型渠道</span>
@@ -223,10 +236,6 @@
           </div>
         </div>
 
-        <div class="primary-actions">
-          <button id="run" class="primary-button" type="button">运行</button>
-          <button id="editorClear" class="action-button" type="button">清空</button>
-          <button id="insert" class="action-button" type="button" disabled>插入图层</button>
         </div>
       </section>
 
@@ -660,7 +669,7 @@
             <button id="settingsSavePromptOptimizerKey" class="primary-button" type="button">保存优化密钥</button>
             <span id="settingsPromptOptimizerKeyState" class="settings-state">未设置</span>
           </div>
-          <p class="settings-note">提示词优化使用 Veinac 的 gpt-6.1-sol（low），会把当前参考图与提示词一起发送。</p>
+          <p class="settings-note">提示词优化使用 Veinac 的 gpt-6.2-sol（low），会把当前参考图与提示词一起发送。</p>
         </section>
 
         <section class="workflow-card settings-card settings-defaults-card is-hidden" data-settings-section-panel="defaults" aria-labelledby="settingsDefaultHeading">
@@ -722,7 +731,7 @@
         <section class="workflow-card settings-card settings-about is-hidden" data-settings-section-panel="defaults" aria-labelledby="settingsAboutHeading">
           <div class="section-heading compact">
             <h2 id="settingsAboutHeading"><span class="section-number" aria-hidden="true">03</span>插件</h2>
-            <span id="settingsVersion">v1.10.14</span>
+            <span id="settingsVersion">v1.10.34</span>
           </div>
           <div class="settings-actions">
             <button id="settingsCheckUpdate" class="action-button" type="button">检查更新</button>
@@ -813,6 +822,6 @@
       </div>
     </div>
 
-  <script src="main-v1.7.77.js?v=1.10.14"></script>
+  <script src="main-v1.7.77.js?v=1.10.34"></script>
   </body>
 </html>

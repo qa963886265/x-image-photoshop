@@ -1,7 +1,7 @@
 {
-  "version": "1.10.19",
-  "tag": "v1.10.19",
-  "asset": "x-image-photoshop-v1.10.19.zip",
-  "title": "即杏智绘 v1.10.19",
-  "notes": "- 在收藏控件后加入明确换行点，避免第一个开关挤入收藏行。\r\n- 三个开关固定从下一行开始并保持同一行。"
+  "version": "1.10.34",
+  "tag": "v1.10.34",
+  "asset": "x-image-photoshop-v1.10.34.zip",
+  "title": "即杏智绘 v1.10.34",
+  "notes": "- 更新修图面板布局、下拉菜单与提示词优化预览。\n- 加入参考图识别、自动框选和修图结果原位回填；支持 Seedream 5.5。\n- 公开包不附带自用识别模型；已有模型可放到 %LOCALAPPDATA%\\JXImagePhotoshop\\auto-selection。"
 }
