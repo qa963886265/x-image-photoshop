@@ -11,6 +11,7 @@ import time
 import numpy as np
 import onnxruntime as ort
 from PIL import Image
+from reference_classifier import classify
 
 PROTOCOL = "jx-auto-selection-file-v1"
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -27,24 +28,42 @@ MAX_REQUEST = 8 * 1024 * 1024
 SESSION = None
 
 
-def infer(value):
-    global SESSION
+def read_preview(value):
     if not isinstance(value, str) or len(value) > MAX_REQUEST:
         raise ValueError("Invalid preview")
     with Image.open(io.BytesIO(base64.b64decode(value, validate=True))) as image:
         if max(image.size) > 2048:
             raise ValueError("Preview too large")
-        rgb = np.asarray(image.convert("RGB").resize((512, 512), Image.Resampling.BILINEAR), dtype=np.float32) / 255.0
+        return image.convert("RGB")
+
+
+def session_options():
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = min(8, os.cpu_count() or 1)
+    return options
+
+
+def infer(value):
+    global SESSION
+    image = read_preview(value)
+    rgb = np.asarray(image.resize((512, 512), Image.Resampling.BILINEAR), dtype=np.float32) / 255.0
     start = time.monotonic()
     if SESSION is None:
-        options = ort.SessionOptions()
-        options.intra_op_num_threads = min(8, os.cpu_count() or 1)
-        SESSION = ort.InferenceSession(str(model_path()), options, providers=["CPUExecutionProvider"])
+        SESSION = ort.InferenceSession(str(model_path()), session_options(), providers=["CPUExecutionProvider"])
     tensor = ((rgb - np.array([0.485, 0.456, 0.406], dtype=np.float32)) / np.array([0.229, 0.224, 0.225], dtype=np.float32)).transpose(2, 0, 1)[None]
     logits = SESSION.run(None, {SESSION.get_inputs()[0].name: tensor})[0][0]
     scores = np.stack([np.asarray(Image.fromarray(score).resize((512, 512), Image.Resampling.BILINEAR)) for score in logits])
     labels = np.argmax(scores, axis=0).astype(np.uint8)
     return {"width": 512, "height": 512, "labels": base64.b64encode(labels.tobytes()).decode("ascii"), "inferenceMs": round((time.monotonic() - start) * 1000)}
+
+
+def is_head_reference(parsed):
+    labels = np.frombuffer(base64.b64decode(parsed["labels"]), dtype=np.uint8)
+    face = labels == 11
+    clothes_below_waist = np.isin(labels, (5, 6, 9, 10))
+    head = np.isin(labels, (1, 2, 3, 11))
+    # A prominent face and head distinguish a portrait from an outfit reference.
+    return face.mean() >= 0.025 and head.mean() >= 0.09 and clothes_below_waist.mean() < 0.02
 
 
 def process(job):
@@ -62,7 +81,20 @@ def process(job):
         data = json.loads(raw)
         if data.get("protocol") != PROTOCOL:
             raise ValueError("Invalid protocol")
-        if model_path().is_file():
+        local = os.environ.get("LOCALAPPDATA")
+        reference_model = Path(local) / "JXImagePhotoshop" / "auto-selection" / "fashionclip.onnx" if local else None
+        if data.get("mode") == "reference":
+            value = data.get("image")
+            parsed = infer(value) if model_path().is_file() else None
+            if parsed and is_head_reference(parsed):
+                result["referencePart"] = "head"
+            elif reference_model and reference_model.is_file():
+                result["referencePart"] = classify(read_preview(value), reference_model, session_options())
+            elif parsed:
+                result.update(parsed)
+            else:
+                result["error"] = "model_missing"
+        elif model_path().is_file():
             result.update(infer(data.get("image")))
         else:
             result["error"] = "model_missing"

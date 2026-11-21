@@ -23,8 +23,9 @@ function classifyReference(labels) {
 
 function resolveReferencePart(parts) {
   const known = [...new Set(parts.filter(Boolean))];
+  if (known.includes("head")) return "head";
   if (known.length > 1) throw new Error("参考图包含不同类别，请保留同一类参考图，或手动选择要修的部位");
-  if (known.length !== 1) throw new Error("未识别到明确的单品类别，请添加白底单品图，或手动选择部位");
+  if (known.length !== 1) throw new Error("未识别到明确的单品类别，请添加白底单品图或清晰的头部参考图，也可以手动选择部位");
   return known[0];
 }
 
@@ -85,24 +86,34 @@ function selectionPlan(labels, mapWidth, mapHeight, width, height, part) {
   return { bounds, target, ratio, part, mask: { bytes, width: cropWidth, height: cropHeight, bounds } };
 }
 
+// Local edit templates use the supplied references for identity or product details
+// and keep the original crop as the authority for pose, perspective and lighting.
+const REPAIR_DETAILS = Object.freeze({
+  head: "仅修复图一的完整头部（含头发）。以头部参考图为准，还原同一模特的脸型、五官比例、发际线、发型和发色；保留图一的头部角度、视线、表情和颈部连接。保留自然毛孔、细碎发丝和肤色层次，发缘与背景自然过渡，避免磨皮、塑料感和硬边。保持身体、服装和配饰不变。",
+  upper: "仅替换图一的上衣。以单品参考图为准，还原版型、领口、肩线、袖长、袖口、下摆、门襟、面料纹理及可辨认的纽扣、图案和标志。让衣料顺着图一的肩、手臂和姿势自然垂坠与起褶，保留头发和手在衣服前方的遮挡，保持下装和鞋不变。",
+  lower: "仅替换图一的下装。以单品参考图为准，还原腰头、裤裆或裙身、腿型或裙摆、长度、口袋、接缝、裤脚及可辨认的纹理和图案。按图一的腰线、腿部姿势和视角还原贴合与褶皱，保持原有上衣和下装的遮挡顺序、双腿轮廓和鞋的位置。",
+  shoes: "仅修复图一中可见的鞋。以单品参考图为准，还原鞋头、鞋面、材质、颜色、鞋带或扣件、鞋底厚度和可见纹路。匹配图一每只脚的朝向、位置和透视，保留原有裤脚遮挡和接地阴影，保持腿部和服装不变。",
+  clothes: "仅替换图一中参考图对应的服装。还原整体廓形、领口、袖口、腰线、下摆、面料及可辨认的图案和标志。保留图一的身体比例、姿势以及各层衣物和头发、手的遮挡关系，使衣料自然贴合与垂坠。"
+});
+
 function defaultRepairPrompt(part) {
-  const region = PART_LABELS[part];
-  if (!region) throw new Error("未知识别区域");
-  if (part === "shoes") return "参照后续参考图修复图一中可见的鞋，准确还原鞋型、颜色、材质、鞋底和鞋面细节。保留图一的脚部姿势、腿部、服装、光线、背景和构图。仅返回与图一构图及宽高比一致的完整修复图，不要拼图或添加文字。";
-  return part === "head"
-    ? "以图一为待修复的原图，参照后续模特参考图修复完整头部及头发，准确还原模特身份、五官、发型和发色，保留图一的头部角度、表情、姿势、光线和背景。不要改变服装及画面构图。仅返回与图一构图及宽高比一致的完整修复图，不要拼图或添加文字。"
-    : "以图一为待修复的原图，严格参照后续服装参考图修复" + region + "的款式、颜色、面料、纹理、领口、袖口、纽扣、印花和结构。保留图一的人物姿势、身体比例、脸、头发、皮肤、其他衣物、背景和光线，不要照搬参考图中的姿势或人物。仅返回与图一构图及宽高比一致的完整修复图，不要拼图或添加文字。";
+  if (!Object.prototype.hasOwnProperty.call(REPAIR_DETAILS, part)) throw new Error("未知识别区域");
+  return [
+    "图一是待修的裁切原图，后续图片只提供对应部位的参考。",
+    REPAIR_DETAILS[part],
+    "保持图一的构图、透视、光线、背景和选区内其他内容，画面四边与原图对齐，便于原位回贴。仅输出一张完整修复图，保持图一的宽高比。只还原参考图中可辨认的商品细节，不新增文字、标志或装饰。"
+  ].join("\n");
 }
 
 function createLocalSelectionClient({ folder, textFormat, launch, decodeBase64, wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
-  async function parse(image) {
+  async function parse(image, mode) {
     const id = "jx-segment-" + Date.now() + "-" + Math.random().toString(16).slice(2).padEnd(8, "0");
     const job = await folder.createFolder(id);
     const options = { format: textFormat };
     let response;
     try {
       const request = await job.createFile("request.json");
-      await request.write(JSON.stringify({ protocol: PROTOCOL, image }), options);
+      await request.write(JSON.stringify({ protocol: PROTOCOL, image, mode }), options);
       // UXP creates the physical file on the first write.
       const ready = await job.createFile("ready");
       await ready.write(PROTOCOL, options);
@@ -130,12 +141,20 @@ function createLocalSelectionClient({ folder, textFormat, launch, decodeBase64, 
     if (response.protocol !== PROTOCOL) throw new Error("本地识别程序版本不匹配");
     if (response.error === "model_missing") throw new Error("未找到本地自动框选模型。请按插件说明配置自用模型，或手动框选");
     if (response.error) throw new Error("本地模型未能识别这张图，请重试或手动框选");
+    if (mode === "reference" && Object.prototype.hasOwnProperty.call(response, "referencePart")) {
+      const part = response.referencePart;
+      if (part !== null && !Object.prototype.hasOwnProperty.call(PARTS, part)) throw new Error("本地参考图识别结果类别无效");
+      return response;
+    }
     if (response.width !== 512 || response.height !== 512 || typeof response.labels !== "string" || response.labels.length !== 349528) throw new Error("识别结果数据不完整");
     const labels = new Uint8Array(decodeBase64(response.labels));
     return { ...response, labels };
   }
   return {
-    async classify(image) { return classifyReference((await parse(image)).labels); },
+    async classify(image) {
+      const parsed = await parse(image, "reference");
+      return parsed.labels ? classifyReference(parsed.labels) : parsed.referencePart;
+    },
     async detect(image, width, height, part) {
       const parsed = await parse(image);
       return { ...selectionPlan(parsed.labels, parsed.width, parsed.height, width, height, part), inferenceMs: parsed.inferenceMs };

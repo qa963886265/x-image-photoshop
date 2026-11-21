@@ -4121,6 +4121,16 @@ function closestSupportedRatio(width, height, supportedRatios) {
   return best;
 }
 
+function automaticRepairRatio(snapshot) {
+  const bounds = snapshot && (snapshot.editBounds || snapshot.bounds);
+  if (!bounds) return "";
+  const { width, height } = bounds;
+  if (width === height && width > 0) return "1:1";
+  if (width > 0 && width * 4 === height * 3) return "3:4";
+  if (height > 0 && width * 3 === height * 4) return "4:3";
+  return "";
+}
+
 function resolveModelOutputSize(aspectRatio, resolution, sourceWidth, sourceHeight, modelConfig) {
   const model = modelConfig || getSelectedModelConfig();
   if (modelProvider(model) === "volc") {
@@ -4590,7 +4600,8 @@ function updateResolvedSize() {
   const productEnabled = state.activeWorkspace === "outfit" && state.activeCreativeTool === "product";
   const ratioControl = productEnabled ? elements.productAspectRatio : elements.aspectRatio;
   const resolutionControl = productEnabled ? elements.productResolution : elements.resolution;
-  const ratioValue = String(ratioControl && ratioControl.value || "auto");
+  const repairRatio = basis && basis.autoSelection && automaticRepairRatio(basis);
+  const ratioValue = repairRatio || String(ratioControl && ratioControl.value || "auto");
   const resolutionValue = String(resolutionControl && resolutionControl.value || "1K");
   const autoRetouch = ratioValue === "auto";
   const workflowLabel = modelOutfitEnabled ? "模特换装" : (productEnabled ? "商品图" : (autoRetouch ? "修图" : "作图"));
@@ -12201,7 +12212,16 @@ function formatLayerTimestamp(value) {
   ].join("");
 }
 
+const REPAIR_LAYER_LABELS = Object.freeze({
+  upper: "上装", lower: "下装", shoes: "鞋", head: "头部", clothes: "整套服装"
+});
+
 function buildGeneratedLayerName(result) {
+  const repair = result && result.snapshot && result.snapshot.autoSelection;
+  const part = repair && Object.prototype.hasOwnProperty.call(REPAIR_LAYER_LABELS, repair.part)
+    ? REPAIR_LAYER_LABELS[repair.part]
+    : "";
+  if (part) return `${part}修复图`;
   const compact = String(result && result.prompt || "")
     .replace(/[\u0000-\u001f\u007f]+/g, " ")
     .replace(/\s+/g, " ")
@@ -12525,7 +12545,6 @@ async function insertResult(result, precisePlacement) {
       await executionContext.hostControl.registerAutoCloseDocument(generatedDocument.id);
       if (!generatedDocument.layers.length) throw new Error("生成图片中没有可用图层");
       generatedSourceLayer = generatedDocument.layers[0];
-
       await selectDocumentAndLayer(generatedDocument.id, generatedSourceLayer.id);
       await convertActiveLayerToSmartObject();
       generatedSourceLayer = generatedDocument.layers[0];
@@ -12780,7 +12799,7 @@ async function runGenerationJob(job) {
     renderGenerationQueue();
     if (result && result.snapshot && result.snapshot.autoSelection && result.snapshot.autoSelection.autoInsert) {
       try { await automaticallyInsertRepair(result); }
-      catch (error) { setStatus("warning", "修图已生成，自动回填未完成", (error.message || error) + "；请从历史中手动插入，勿重新生成"); }
+      catch (error) { setStatus("warning", "修图已生成，自动回填未完成", (error.message || error) + "；生成图已保留，可在历史里预览和手动处理"); }
     }
     return result;
   };
@@ -13452,8 +13471,11 @@ async function handleRunInternal(options = {}) {
         : `${priceCheck.size} × ${getGenerationCount()} 张，${priceSummary}；${snapshot.mode === "import" ? "正在保存主导入图和参考图" : "正在保存本次选区和参考图"}`
     );
     const requestedCount = getGenerationCount();
+    const repairRatio = snapshot.autoSelection && automaticRepairRatio(snapshot);
+    if (snapshot.autoSelection && !repairRatio) throw new Error("自动选区比例无效，请重新框选后再生成");
+    const requestRatio = repairRatio || elements.aspectRatio.value;
     const requested = resolveModelOutputSize(
-      elements.aspectRatio.value,
+      requestRatio,
       elements.resolution.value,
       snapshot.bounds.width,
       snapshot.bounds.height,
@@ -13487,7 +13509,7 @@ async function handleRunInternal(options = {}) {
       apiKey: runIsVolc ? state.volcImageApiKey : state.apiKey,
       requested,
       requestedCount,
-      aspectRatio: elements.aspectRatio.value,
+      aspectRatio: requestRatio,
       resolution: elements.resolution.value,
       precisionPlacement: modelOutfitEnabled ? true : elements.precisionPlacement.checked,
       localEditMode: snapshot.localEditMode || "general",
@@ -13924,6 +13946,14 @@ async function encodeAutoSelectionReference(reference) {
   }, { commandName: "准备白底参考图" });
 }
 
+async function prepareLocalSelectionModels() {
+  const plugin = await localFileSystem.getPluginFolder();
+  const updater = await plugin.getEntry("updater");
+  const installer = await updater.getEntry("JXSelectionModels.exe");
+  const error = await shell.openPath(localFileSystem.getNativePath(installer), "从模型原发布方下载本地识别所需的模型");
+  if (error) throw new Error(error);
+}
+
 async function runLocalAutoSelection(part, references, targetReference) {
   const pluginFolder = await localFileSystem.getPluginFolder();
   const helperFolder = await pluginFolder.getEntry("auto-selection");
@@ -13974,13 +14004,15 @@ async function runLocalAutoSelection(part, references, targetReference) {
       preview = { image: arrayBufferToBase64(exactArrayBuffer(bytes)), fingerprint: sha256Hex(bytes) };
     } finally { if (captured && captured.imageData) captured.imageData.dispose(); }
   }, { commandName: "准备自动识别预览" });
+  let matchedHeadReferences;
+  const parts = [];
   if (part === "auto") {
-    const parts = [];
     for (let i = 0; i < references.length; i++) {
       setStatus("working", "正在识别参考图类别", (i + 1) + " / " + references.length);
       parts.push(await client.classify(await encodeAutoSelectionReference(references[i])));
     }
     part = resolveReferencePart(parts);
+    if (part === "head") matchedHeadReferences = references.filter((_, index) => parts[index] === "head");
     setStatus("working", "正在框选" + PART_LABELS[part], "已根据参考图确认修图部位");
   }
   const result = await client.detect(preview.image, sourceBounds.width, sourceBounds.height, part);
@@ -14004,9 +14036,27 @@ async function runLocalAutoSelection(part, references, targetReference) {
     await validateSource(document);
     await document.selection.selectRectangle({ top: result.bounds.top, left: result.bounds.left,
       bottom: result.bounds.bottom, right: result.bounds.right }, constants.SelectionType.REPLACE);
+    for (const [index, referencePart] of parts.entries()) {
+      const label = REPAIR_LAYER_LABELS[referencePart];
+      const reference = references[index];
+      const snapshot = reference.snapshot;
+      if (!label || reference.mode !== "layer" || !snapshot || snapshot.layerId == null) continue;
+      if (snapshot.documentId === source.documentId && snapshot.layerId === source.layerId) continue;
+      const referenceDocument = findOpenDocument(snapshot.documentId);
+      if (!referenceDocument) continue;
+      const name = `${label}参考图`;
+      try {
+        if (await renameLayerById(referenceDocument, snapshot.layerId, name)) {
+          reference.layerName = name;
+          snapshot.layerName = name;
+        }
+      } catch (error) {
+        console.warn("无法重命名参考图层", error);
+      }
+    }
   }, { commandName: "建立自动识别选区" });
   if (!String(getPromptValue()).trim()) { setPromptValue(defaultRepairPrompt(result.part)); updatePromptCount(); }
-  return { ...result, source, validateSource };
+  return { ...result, source, validateSource, matchedHeadReferences };
 }
 
 async function handleAutomaticRepair(runAfterDetection = false) {
@@ -14022,7 +14072,7 @@ async function handleAutomaticRepair(runAfterDetection = false) {
   const remainingReferences = state.references.filter((reference) => reference !== replacing && !reference.released && reference.file &&
     String(reference.id) !== String(state.targetSnapshot && state.targetSnapshot.sourceReferenceId));
   if (part === "auto" && !remainingReferences.length) {
-    setStatus("warning", "请先添加白底参考图", "添加单品参考图后再自动识别，也可以手动选择要框选的部位");
+    setStatus("warning", "请先添加参考图", "添加白底单品图或清晰的头部参考图，也可以手动选择要框选的部位");
     return;
   }
   if (runAfterDetection && !remainingReferences.length) {
@@ -14037,10 +14087,12 @@ async function handleAutomaticRepair(runAfterDetection = false) {
   updateControls();
   let captured = null;
   let detectedPart;
+  let matchedHeadReferences;
   try {
     setStatus("working", "正在本地识别" + (PART_LABELS[part] || ""), "原图不会上传，识别过程中请不要编辑画布");
     const detected = await runLocalAutoSelection(part, remainingReferences, replacing);
     detectedPart = detected.part;
+    matchedHeadReferences = detected.matchedHeadReferences;
     const sourceSnapshot = { ...detected.source, bounds: detected.bounds, editBounds: detected.bounds, solid: true };
     captured = await captureSource("selection", {
       batchManaged: true, silentStatus: true, sourceSnapshot,
@@ -14061,7 +14113,13 @@ async function handleAutomaticRepair(runAfterDetection = false) {
   } catch (error) {
     setStatus("error", "自动修图准备失败", error.message || error);
   } finally { state.capturing = false; updateControls(); }
-  if (captured && runAfterDetection) await handleRun({ skipPromptOptimization: true, promptOverride: defaultRepairPrompt(detectedPart) });
+  if (captured && runAfterDetection) {
+    await handleRun({
+      skipPromptOptimization: true,
+      promptOverride: defaultRepairPrompt(detectedPart),
+      referencesOverride: matchedHeadReferences ? [captured, ...matchedHeadReferences] : undefined
+    });
+  }
 }
 
 async function automaticallyInsertRepair(result) {
@@ -15293,6 +15351,7 @@ async function initialize() {
   await loadVolcImageApiKey();
   startPricingAutoRefresh();
   refreshLivePricing("startup").catch(() => {});
+  prepareLocalSelectionModels().catch((error) => console.warn("本地识别模型安装程序未启动", error));
   if (state.historyPersistenceError) {
     setStatus("warning", "本地生成历史读取不完整", state.historyPersistenceError);
   } else if (state.results.length) {
