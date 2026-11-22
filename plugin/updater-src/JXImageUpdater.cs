@@ -16,8 +16,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("即杏智绘 Photoshop 插件更新程序")]
 [assembly: AssemblyCompany("即杏智绘项目团队")]
 [assembly: AssemblyProduct("即杏智绘")]
-[assembly: AssemblyVersion("1.10.45.0")]
-[assembly: AssemblyFileVersion("1.10.45.0")]
+[assembly: AssemblyVersion("1.10.46.0")]
+[assembly: AssemblyFileVersion("1.10.46.0")]
 
 namespace JXImageUpdater
 {
@@ -165,7 +165,7 @@ namespace JXImageUpdater
         {
             using (TimeoutWebClient client = CreateWebClient())
             {
-                string json = client.DownloadString(LatestReleaseApi);
+                string json = DownloadTextWithCurl(LatestReleaseApi);
                 JavaScriptSerializer serializer = new JavaScriptSerializer();
                 serializer.MaxJsonLength = 1024 * 1024;
                 Dictionary<string, object> root = serializer.Deserialize<Dictionary<string, object>>(json);
@@ -189,7 +189,7 @@ namespace JXImageUpdater
         {
             using (TimeoutWebClient client = CreateWebClient())
             {
-                client.DownloadFile(release.DownloadUrl, destination);
+                DownloadFileWithCurl(release.DownloadUrl, destination);
             }
             FileInfo file = new FileInfo(destination);
             if (!file.Exists || file.Length <= 0 || file.Length > MaxPackageBytes)
@@ -209,6 +209,54 @@ namespace JXImageUpdater
             client.Headers[HttpRequestHeader.UserAgent] = "JX-Image-Photoshop-Updater";
             client.Headers[HttpRequestHeader.Accept] = "application/vnd.github+json";
             return client;
+        }
+
+        private static string DownloadTextWithCurl(string url)
+        {
+            string temporary = Path.Combine(Path.GetTempPath(), "jx-release-" + Path.GetRandomFileName() + ".json");
+            try
+            {
+                RunCurl(url, temporary);
+                return File.ReadAllText(temporary, Encoding.UTF8);
+            }
+            finally { TryDeleteFile(temporary); }
+        }
+
+        private static void DownloadFileWithCurl(string url, string destination)
+        {
+            RunCurl(url, destination);
+        }
+
+        private static void RunCurl(string url, string destination)
+        {
+            string curl = Path.Combine(Environment.SystemDirectory, "curl.exe");
+            if (!File.Exists(curl)) curl = "curl.exe";
+            ProcessStartInfo start = new ProcessStartInfo
+            {
+                FileName = curl,
+                Arguments = "--fail --location --silent --show-error --retry 3 --retry-all-errors --connect-timeout 20 --max-time 900 --user-agent \"JX-Image-Photoshop-Updater\" --output \"" + destination.Replace("\"", "\\\"") + "\" \"" + url.Replace("\"", "\\\"") + "\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            };
+            using (Process process = Process.Start(start))
+            {
+                if (process == null) throw new InvalidOperationException("无法启动系统网络组件");
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+                if (process.ExitCode != 0)
+                    throw new WebException("GitHub 下载失败：" + (String.IsNullOrWhiteSpace(error) ? "网络连接失败" : error.Trim()));
+            }
+            FileInfo file = new FileInfo(destination);
+            if (!file.Exists || file.Length <= 0) throw new InvalidDataException("GitHub 返回了空文件");
+        }
+
+        private static void TryDeleteFile(string path)
+        {
+            try { if (File.Exists(path)) File.Delete(path); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
 
         private static void ExtractZipSafely(string zipPath, string destination)

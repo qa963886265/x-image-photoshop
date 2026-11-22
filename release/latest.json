@@ -1,7 +1,7 @@
 {
-  "version": "1.10.45",
-  "tag": "v1.10.45",
-  "asset": "x-image-photoshop-v1.10.45.zip",
-  "title": "即杏智绘 v1.10.45",
-  "notes": "- 恢复 Photoshop 插件面板原来的 500 高度。\n- 修复参考图添加格被原生按钮样式渲染成黑色。\n- 修正在线更新包的版本校验。"
+  "version": "1.10.46",
+  "tag": "v1.10.46",
+  "asset": "x-image-photoshop-v1.10.46.zip",
+  "title": "即杏智绘 v1.10.46",
+  "notes": "- 修复更新器的 GitHub TLS 连接失败。\n- 改用系统 curl 下载并自动重试。"
 }
