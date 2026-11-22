@@ -20,19 +20,19 @@
       },
       "minimumSize": {
         "width": 440,
-      "height": 560
+      "height": 500
       },
       "maximumSize": {
         "width": 440,
-      "height": 560
+      "height": 500
       },
       "preferredDockedSize": {
         "width": 440,
-      "height": 560
+      "height": 500
       },
       "preferredFloatingSize": {
         "width": 440,
-      "height": 560
+      "height": 500
       },
       "icons": [
         {

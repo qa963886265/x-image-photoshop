@@ -4033,6 +4033,8 @@ function renderReferences() {
   elements.referenceAdd.style.setProperty("background", "#effaf4", "important");
   elements.referenceAdd.style.setProperty("background-color", "#effaf4", "important");
   elements.referenceAdd.style.setProperty("color", "#4f8e75", "important");
+  elements.referenceAdd.style.setProperty("appearance", "none", "important");
+  elements.referenceAdd.style.setProperty("-webkit-appearance", "none", "important");
 
   const hasReferences = state.references.length > 0;
   elements.referenceList.classList.toggle("has-references", hasReferences);

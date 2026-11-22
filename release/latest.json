@@ -1,7 +1,7 @@
 {
-  "version": "1.10.44",
-  "tag": "v1.10.44",
-  "asset": "x-image-photoshop-v1.10.44.zip",
-  "title": "即杏智绘 v1.10.44",
-  "notes": "- 自动模型下载失败时继续使用内置自动识别模型。\n- 修复 Photoshop 27 下参考图添加格被渲染成黑色。"
+  "version": "1.10.45",
+  "tag": "v1.10.45",
+  "asset": "x-image-photoshop-v1.10.45.zip",
+  "title": "即杏智绘 v1.10.45",
+  "notes": "- 恢复 Photoshop 插件面板原来的 500 高度。\n- 修复参考图添加格被原生按钮样式渲染成黑色。"
 }
