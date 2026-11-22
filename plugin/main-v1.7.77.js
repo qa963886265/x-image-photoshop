@@ -1044,11 +1044,15 @@ function compareUpdateVersions(left, right) {
   return 0;
 }
 
+function isDifferentUpdateVersion(left, right) {
+  return compareUpdateVersions(left, right) !== 0;
+}
+
 function renderUpdateControl() {
   if (!elements.pluginVersion) return;
   const availableVersion = state.updateAvailable && state.updateAvailable.version;
   const hasUpdate = Boolean(
-    availableVersion && compareUpdateVersions(availableVersion, UPDATE_CONFIG.currentVersion) > 0
+    availableVersion && isDifferentUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)
   );
   elements.pluginVersion.classList.toggle("has-update", hasUpdate);
   elements.pluginVersion.textContent = hasUpdate
@@ -1067,12 +1071,12 @@ function renderUpdateControl() {
 
 function showUpdateAvailableNotice(source) {
   const availableVersion = state.updateAvailable && state.updateAvailable.version;
-  if (!availableVersion || compareUpdateVersions(availableVersion, UPDATE_CONFIG.currentVersion) <= 0) {
+  if (!availableVersion || !isDifferentUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)) {
     return false;
   }
   setStatus(
     "warning",
-    `发现新版 v${availableVersion}`,
+    `发现可用版本 v${availableVersion}`,
     source === "cache"
       ? "上次检查已确认有新版本；点击左上角图标或带“更新”的版本号开始更新"
       : "点击左上角图标或带“更新”的版本号，即可启动自动更新程序"
@@ -1096,7 +1100,7 @@ function loadUpdateCheckCache() {
     const cached = JSON.parse(localStorage.getItem(UPDATE_CHECK_STORAGE) || "{}");
     state.updateLastCheckedAt = Number(cached.checkedAt) || 0;
     const availableVersion = normalizeUpdateVersion(cached.availableVersion);
-    if (availableVersion && compareUpdateVersions(availableVersion, UPDATE_CONFIG.currentVersion) > 0) {
+    if (availableVersion && isDifferentUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)) {
       state.updateAvailable = { version: availableVersion, cached: true };
     }
   } catch (_) {
@@ -1151,7 +1155,7 @@ async function checkForPluginUpdate(manual) {
   try {
     const release = await fetchLatestPluginRelease();
     state.updateLastCheckedAt = Date.now();
-    state.updateAvailable = compareUpdateVersions(release.version, UPDATE_CONFIG.currentVersion) > 0
+    state.updateAvailable = isDifferentUpdateVersion(release.version, UPDATE_CONFIG.currentVersion)
       ? release
       : null;
     saveUpdateCheckCache();

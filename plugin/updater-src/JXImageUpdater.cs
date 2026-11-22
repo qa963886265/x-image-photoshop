@@ -16,8 +16,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("即杏智绘 Photoshop 插件更新程序")]
 [assembly: AssemblyCompany("即杏智绘项目团队")]
 [assembly: AssemblyProduct("即杏智绘")]
-[assembly: AssemblyVersion("1.10.41.0")]
-[assembly: AssemblyFileVersion("1.10.41.0")]
+[assembly: AssemblyVersion("1.10.40.0")]
+[assembly: AssemblyFileVersion("1.10.40.0")]
 
 namespace JXImageUpdater
 {
@@ -119,7 +119,7 @@ namespace JXImageUpdater
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             string currentVersion = ReadPluginVersion(Path.Combine(installDirectory, "manifest.json"));
             ReleaseInfo release = ReadLatestRelease();
-            if (CompareVersions(release.Version, currentVersion) <= 0)
+            if (CompareVersions(release.Version, currentVersion) == 0)
             {
                 MessageBox.Show(
                     "当前已经是最新版 v" + currentVersion + "。",
