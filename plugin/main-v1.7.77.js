@@ -13951,10 +13951,11 @@ async function prepareLocalSelectionModels() {
   const updater = await plugin.getEntry("updater");
   const installer = await updater.getEntry("JXSelectionModels.exe");
   const error = await shell.openPath(localFileSystem.getNativePath(installer), "从模型原发布方下载本地识别所需的模型");
-  if (error) throw new Error(error);
+  if (error) throw new Error("模型下载器启动失败：" + error);
 }
 
 async function runLocalAutoSelection(part, references, targetReference) {
+  await prepareLocalSelectionModels();
   const pluginFolder = await localFileSystem.getPluginFolder();
   const helperFolder = await pluginFolder.getEntry("auto-selection");
   const helper = await helperFolder.getEntry("JXAutoSelection");
@@ -15351,7 +15352,6 @@ async function initialize() {
   await loadVolcImageApiKey();
   startPricingAutoRefresh();
   refreshLivePricing("startup").catch(() => {});
-  prepareLocalSelectionModels().catch((error) => console.warn("本地识别模型安装程序未启动", error));
   if (state.historyPersistenceError) {
     setStatus("warning", "本地生成历史读取不完整", state.historyPersistenceError);
   } else if (state.results.length) {

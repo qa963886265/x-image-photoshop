@@ -1,7 +1,7 @@
 {
-  "version": "1.10.41",
-  "tag": "v1.10.41",
-  "asset": "x-image-photoshop-v1.10.41.zip",
-  "title": "即杏智绘 v1.10.41",
-  "notes": "- 更新自动选区与修图放回流程。\n- 更新后打开面板会从原发布方补齐本地识别模型。SegFormer 仅供研究或评估。"
+  "version": "1.10.42",
+  "tag": "v1.10.42",
+  "asset": "x-image-photoshop-v1.10.42.zip",
+  "title": "即杏智绘 v1.10.42",
+  "notes": "- 兼容 Photoshop 27 的面板高度。\n- 模型下载改为缺失时启动，并支持分段重试和断点校验。SegFormer 仅供研究或评估。"
 }
