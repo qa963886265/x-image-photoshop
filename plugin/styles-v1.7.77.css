@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light only;
   --island-green: #84c9a0;
   --island-green-deep: #4f9d78;
   --parchment: #f7f3df;
@@ -26,6 +26,30 @@
   --red: #e96f72;
   --shadow: #bdaea0;
   --shadow-soft: rgba(86, 68, 45, 0.14);
+}
+
+/* Photoshop 27 can expose its dark host canvas through transparent UXP roots.
+   Keep this plugin's light palette opaque in both host theme modes. */
+html,
+body,
+#app,
+.app-shell,
+.workspace-view {
+  color-scheme: light only !important;
+  color: var(--ink);
+  background-color: var(--island-green) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body,
+  #app,
+  .app-shell,
+  .workspace-view {
+    color-scheme: light only !important;
+    color: var(--ink) !important;
+    background-color: var(--island-green) !important;
+  }
 }
 
 * {

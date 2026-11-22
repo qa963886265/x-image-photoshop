@@ -1,7 +1,7 @@
 {
-  "version": "1.10.42",
-  "tag": "v1.10.42",
-  "asset": "x-image-photoshop-v1.10.42.zip",
-  "title": "即杏智绘 v1.10.42",
-  "notes": "- 兼容 Photoshop 27 的面板高度。\n- 模型下载改为缺失时启动，并支持分段重试和断点校验。SegFormer 仅供研究或评估。"
+  "version": "1.10.43",
+  "tag": "v1.10.43",
+  "asset": "x-image-photoshop-v1.10.43.zip",
+  "title": "即杏智绘 v1.10.43",
+  "notes": "- 修复 Photoshop 27 深色主题下插件背景变黑。\n- 保留模型缺失时下载、分段重试和校验逻辑。"
 }
