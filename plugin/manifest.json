@@ -1,7 +1,7 @@
 {
   "id": "llai.psapi.selectioneditor",
   "name": " ",
-  "version": "1.10.41",
+  "version": "1.10.42",
   "main": "index.html",
   "manifestVersion": 6,
   "host": {
@@ -20,19 +20,19 @@
       },
       "minimumSize": {
         "width": 440,
-        "height": 500
+      "height": 560
       },
       "maximumSize": {
         "width": 440,
-        "height": 500
+      "height": 560
       },
       "preferredDockedSize": {
         "width": 440,
-        "height": 500
+      "height": 560
       },
       "preferredFloatingSize": {
         "width": 440,
-        "height": 500
+      "height": 560
       },
       "icons": [
         {
