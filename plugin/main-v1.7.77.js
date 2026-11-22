@@ -4030,6 +4030,9 @@ function renderReferences() {
   elements.referenceAdd.style.setProperty("min-height", "92px", "important");
   elements.referenceAdd.style.setProperty("max-height", "92px", "important");
   elements.referenceAdd.style.setProperty("border-radius", "6px", "important");
+  elements.referenceAdd.style.setProperty("background", "#effaf4", "important");
+  elements.referenceAdd.style.setProperty("background-color", "#effaf4", "important");
+  elements.referenceAdd.style.setProperty("color", "#4f8e75", "important");
 
   const hasReferences = state.references.length > 0;
   elements.referenceList.classList.toggle("has-references", hasReferences);
@@ -13955,7 +13958,11 @@ async function prepareLocalSelectionModels() {
 }
 
 async function runLocalAutoSelection(part, references, targetReference) {
-  await prepareLocalSelectionModels();
+  try {
+    await prepareLocalSelectionModels();
+  } catch (error) {
+    setStatus("warning", "模型下载未完成", "已继续使用内置自动识别模型，可稍后重试下载单品分类模型");
+  }
   const pluginFolder = await localFileSystem.getPluginFolder();
   const helperFolder = await pluginFolder.getEntry("auto-selection");
   const helper = await helperFolder.getEntry("JXAutoSelection");
