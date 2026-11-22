@@ -1,7 +1,7 @@
 {
-  "version": "1.10.46",
-  "tag": "v1.10.46",
-  "asset": "x-image-photoshop-v1.10.46.zip",
-  "title": "即杏智绘 v1.10.46",
-  "notes": "- 修复更新器的 GitHub TLS 连接失败。\n- 改用系统 curl 下载并自动重试。"
+  "version": "1.10.41",
+  "tag": "v1.10.41",
+  "asset": "x-image-photoshop-v1.10.41.zip",
+  "title": "即杏智绘 v1.10.41",
+  "notes": "- 更新自动选区与修图放回流程。\n- 更新后打开面板会从原发布方补齐本地识别模型。SegFormer 仅供研究或评估。"
 }

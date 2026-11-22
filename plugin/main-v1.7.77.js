@@ -4030,11 +4030,6 @@ function renderReferences() {
   elements.referenceAdd.style.setProperty("min-height", "92px", "important");
   elements.referenceAdd.style.setProperty("max-height", "92px", "important");
   elements.referenceAdd.style.setProperty("border-radius", "6px", "important");
-  elements.referenceAdd.style.setProperty("background", "#effaf4", "important");
-  elements.referenceAdd.style.setProperty("background-color", "#effaf4", "important");
-  elements.referenceAdd.style.setProperty("color", "#4f8e75", "important");
-  elements.referenceAdd.style.setProperty("appearance", "none", "important");
-  elements.referenceAdd.style.setProperty("-webkit-appearance", "none", "important");
 
   const hasReferences = state.references.length > 0;
   elements.referenceList.classList.toggle("has-references", hasReferences);
@@ -13956,15 +13951,10 @@ async function prepareLocalSelectionModels() {
   const updater = await plugin.getEntry("updater");
   const installer = await updater.getEntry("JXSelectionModels.exe");
   const error = await shell.openPath(localFileSystem.getNativePath(installer), "从模型原发布方下载本地识别所需的模型");
-  if (error) throw new Error("模型下载器启动失败：" + error);
+  if (error) throw new Error(error);
 }
 
 async function runLocalAutoSelection(part, references, targetReference) {
-  try {
-    await prepareLocalSelectionModels();
-  } catch (error) {
-    setStatus("warning", "模型下载未完成", "已继续使用内置自动识别模型，可稍后重试下载单品分类模型");
-  }
   const pluginFolder = await localFileSystem.getPluginFolder();
   const helperFolder = await pluginFolder.getEntry("auto-selection");
   const helper = await helperFolder.getEntry("JXAutoSelection");
@@ -15361,6 +15351,7 @@ async function initialize() {
   await loadVolcImageApiKey();
   startPricingAutoRefresh();
   refreshLivePricing("startup").catch(() => {});
+  prepareLocalSelectionModels().catch((error) => console.warn("本地识别模型安装程序未启动", error));
   if (state.historyPersistenceError) {
     setStatus("warning", "本地生成历史读取不完整", state.historyPersistenceError);
   } else if (state.results.length) {

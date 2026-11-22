@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
@@ -62,14 +61,21 @@ internal static class JXSelectionModels
         var temporary = destination + ".download";
         try
         {
+            var request = (HttpWebRequest)WebRequest.Create("https://huggingface.co/" + source);
+            request.UserAgent = "JXImagePhotoshop-SelectionModels";
+            request.Timeout = 30000;
+            request.ReadWriteTimeout = 30000;
+            using (var response = (HttpWebResponse)request.GetResponse())
+            using (var input = response.GetResponseStream())
             using (var output = File.Create(temporary))
             {
+                if (response.ResponseUri.Scheme != "https") throw new InvalidDataException("Expected HTTPS");
                 var buffer = new byte[256 * 1024];
-                const long chunkSize = 16L * 1024 * 1024;
-                for (long start = 0; start < size; start = output.Length)
+                int count;
+                while ((count = input.Read(buffer, 0, buffer.Length)) > 0)
                 {
-                    long end = Math.Min(start + chunkSize, size) - 1;
-                    DownloadRange(source, start, end, size, name, buffer, output);
+                    if (output.Length + count > size) throw new InvalidDataException("Unexpected model size: " + name);
+                    output.Write(buffer, 0, count);
                 }
             }
             if (!Matches(temporary, size, hash)) throw new InvalidDataException("Model checksum mismatch: " + name);
@@ -78,42 +84,4 @@ internal static class JXSelectionModels
         }
         finally { File.Delete(temporary); }
     }
-
-    private static void DownloadRange(string source, long start, long end, long size, string name, byte[] buffer, FileStream output)
-    {
-        Exception last = null;
-        for (int attempt = 0; attempt < 3; attempt++)
-        {
-            try
-            {
-                output.SetLength(start);
-                output.Position = start;
-                var request = (HttpWebRequest)WebRequest.Create("https://huggingface.co/" + source + "?download=true&part=" + Number(start));
-                request.AddRange(start, end);
-                request.UserAgent = "JXImagePhotoshop-SelectionModels";
-                request.Timeout = 120000;
-                request.ReadWriteTimeout = 120000;
-                using (var response = (HttpWebResponse)request.GetResponse())
-                using (var input = response.GetResponseStream())
-                {
-                    if (response.ResponseUri.Scheme != "https") throw new InvalidDataException("Model download was redirected to an insecure URL");
-                    if (response.StatusCode != HttpStatusCode.PartialContent ||
-                        response.ContentLength != end - start + 1)
-                        throw new InvalidDataException("Model host did not return a valid range: " + name);
-                    int count;
-                    while ((count = input.Read(buffer, 0, buffer.Length)) > 0)
-                    {
-                        if (output.Length + count > end + 1) throw new InvalidDataException("Unexpected model size: " + name);
-                        output.Write(buffer, 0, count);
-                    }
-                    if (output.Length != end + 1) throw new EndOfStreamException(name);
-                    return;
-                }
-            }
-            catch (Exception error) { last = error; Thread.Sleep(1200 * (attempt + 1)); }
-        }
-        throw new InvalidDataException("Model download failed after retries: " + name, last);
-    }
-
-    private static string Number(long value) { return value.ToString(CultureInfo.InvariantCulture); }
 }
