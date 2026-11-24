@@ -53,4 +53,4 @@ API Key 保存在 UXP 安全存储中，发布包不包含用户账户密钥。�
 
 ## 本地自动框选
 
-公开安装包包含 Windows 识别程序。将已合法取得并兼容的服装解析模型 `model_quantized.onnx` 放到 `%LOCALAPPDATA%\JXImagePhotoshop\auto-selection\`。该目录独立于插件安装目录，在线更新时不会被覆盖。未配置模型时仍可手动框选并修图。
+公开安装包包含 Windows 识别程序。打开插件时会在后台检查并下载缺少或校验不通过的本地识别模型，存放在 `%LOCALAPPDATA%\JXImagePhotoshop\auto-selection\`，不随插件更新删除。`model_quantized.onnx` 优先从本项目的固定 GitHub Release 下载，失败时回退到原发布方；`fashionclip.onnx` 继续从其原发布方下载。下载后会校验文件大小和 SHA-256；下载失败时不会替换已有文件，仍可手动框选并修图。
