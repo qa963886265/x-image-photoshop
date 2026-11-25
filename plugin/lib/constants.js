@@ -29,9 +29,9 @@ const API_CONFIG = Object.freeze({
 });
 
 const UPDATE_CONFIG = Object.freeze({
-  currentVersion: "1.10.47",
-  latestReleaseApi: "https://api.github.com/repos/qa963886265/x-image-photoshop/releases/latest",
-  releasesPage: "https://github.com/qa963886265/x-image-photoshop/releases",
+  currentVersion: "1.10.48",
+  latestReleaseApi: "https://updates.8.208.32.40.sslip.io/latest.json",
+  releasesPage: "https://updates.8.208.32.40.sslip.io/",
   updaterFolder: "updater",
   updaterFile: "JXImageUpdater.exe",
   automaticCheckIntervalMs: 12 * 60 * 60 * 1000,

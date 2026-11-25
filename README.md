@@ -1,6 +1,6 @@
 # 即杏智绘 Photoshop
 
-即杏智绘用于 Photoshop 局部修图、内容替换和参考图生成。当前版本为 **v1.10.47**，插件源码位于 `plugin/`。
+即杏智绘用于 Photoshop 局部修图、内容替换和参考图生成。当前版本为 **v1.10.48**，插件源码位于 `plugin/`。
 
 - [下载最新版](https://github.com/qa963886265/x-image-photoshop/releases/latest)
 - [功能与使用说明](plugin/README.md)
@@ -12,6 +12,6 @@
 
 同步插件版本号和 `release/latest.json` 后，推送到 `main` 会触发 GitHub Actions。工作流从标签对应的 `plugin/` 目录打包并发布 ZIP。
 
-插件更新程序检查本仓库最新 Release，并从对应标签的源码 ZIP 中寻找插件目录。仓库内的 `plugin/manifest.json` 必须与 Release 版本一致。Release 同时提供可直接解压安装的 ZIP 附件，兼容使用附件的旧版本更新程序。
+v1.10.48 是最后一个通过 GitHub 引导安装的过渡版本。安装后，插件只访问 `https://updates.8.208.32.40.sslip.io/latest.json` 并从该服务器下载后续安装包，校验文件大小与 SHA-256，不再请求 GitHub Releases。GitHub Actions 仍可作为源码发布流程，服务器会将最新 Release 镜像到客户端更新地址。
 
 首次安装请下载 Release 附件；已有插件可点击左上角图标或版本号检查更新。

@@ -40,6 +40,7 @@ internal static class JXSelectionModels
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         Install(dir, "model_quantized.onnx", 28837959,
             "2b18fbdd196a7ee12702c2fceaa6f812fe70d1154573a43bd62667b9157ee48d",
+            "https://updates.8.208.32.40.sslip.io/models/model_quantized.onnx",
             "https://github.com/qa963886265/x-image-photoshop/releases/download/selection-models-v1/model_quantized.onnx",
             "https://huggingface.co/Xenova/segformer_b2_clothes/resolve/cb6ac44e641faa309f29561c1afe08d87ef52631/onnx/model_quantized.onnx");
         Install(dir, "fashionclip.onnx", 605804513,

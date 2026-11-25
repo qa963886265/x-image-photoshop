@@ -1,0 +1,12 @@
+[Unit]
+Description=Mirror the latest 即杏智绘 release to the isolated update site
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/jx-photoshop-mirror/mirror_release.py
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/jx-photoshop-updates /var/lock

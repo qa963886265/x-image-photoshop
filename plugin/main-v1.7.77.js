@@ -1113,14 +1113,13 @@ async function fetchLatestPluginRelease() {
   const response = await limitedFetch(`${UPDATE_CONFIG.latestReleaseApi}?_=${Date.now()}`, {
     method: "GET",
     headers: {
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28"
+      Accept: "application/json"
     },
     credentials: "omit",
     redirect: "error"
   });
   if (response.status === 404) {
-    const error = new Error("GitHub 仓库还没有发布 Release");
+    const error = new Error("更新服务器上还没有可用版本");
     error.noRelease = true;
     throw error;
   }
@@ -1130,20 +1129,16 @@ async function fetchLatestPluginRelease() {
   try {
     payload = raw ? JSON.parse(raw) : null;
   } catch (_) {
-    throw new Error("GitHub 返回了无法解析的更新信息");
+    throw new Error("更新服务器返回了无法解析的版本信息");
   }
   if (!response.ok) throw new Error(`检查更新失败（HTTP ${response.status}）`);
   const version = normalizeUpdateVersion(payload && payload.tag_name);
   if (!version) throw new Error("最新 Release 的版本标签不正确");
-  const assets = Array.isArray(payload.assets) ? payload.assets : [];
-  const zipAsset = assets.find((asset) => (
-    asset && /\.zip$/i.test(String(asset.name || "")) && Number(asset.size) > 0
-  ));
   return {
     version,
     tag: String(payload.tag_name || ""),
-    assetName: zipAsset ? String(zipAsset.name || "") : "GitHub 源码归档",
-    releaseUrl: String(payload.html_url || UPDATE_CONFIG.releasesPage)
+    assetName: String(payload.asset_name || "安装包"),
+    releaseUrl: String(payload.release_url || UPDATE_CONFIG.releasesPage)
   };
 }
 
@@ -1151,7 +1146,7 @@ async function checkForPluginUpdate(manual) {
   if (state.checkingUpdate) return Boolean(state.updateAvailable);
   state.checkingUpdate = true;
   updateControls();
-  if (manual) setStatus("working", "正在检查更新", "正在读取 GitHub Releases");
+  if (manual) setStatus("working", "正在检查更新", "正在读取更新服务器");
   try {
     const release = await fetchLatestPluginRelease();
     state.updateLastCheckedAt = Date.now();

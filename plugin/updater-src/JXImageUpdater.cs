@@ -16,16 +16,15 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("即杏智绘 Photoshop 插件更新程序")]
 [assembly: AssemblyCompany("即杏智绘项目团队")]
 [assembly: AssemblyProduct("即杏智绘")]
-[assembly: AssemblyVersion("1.10.47.0")]
-[assembly: AssemblyFileVersion("1.10.47.0")]
+[assembly: AssemblyVersion("1.10.48.0")]
+[assembly: AssemblyFileVersion("1.10.48.0")]
 
 namespace JXImageUpdater
 {
     internal static class Program
     {
         private const string PluginId = "llai.psapi.selectioneditor";
-        private const string LatestReleaseApi = "https://api.github.com/repos/qa963886265/x-image-photoshop/releases/latest";
-        private const string ReleaseArchiveTemplate = "https://github.com/qa963886265/x-image-photoshop/archive/refs/tags/{0}.zip";
+        private const string LatestReleaseApi = "https://updates.8.208.32.40.sslip.io/latest.json";
         private const long MaxPackageBytes = 300L * 1024L * 1024L;
         private static readonly string LogPath = Path.Combine(Path.GetTempPath(), "JXImageUpdater.log");
         private static Mutex instanceMutex;
@@ -163,25 +162,41 @@ namespace JXImageUpdater
 
         private static ReleaseInfo ReadLatestRelease()
         {
-            using (TimeoutWebClient client = CreateWebClient())
+            try
             {
-                string json = client.DownloadString(LatestReleaseApi);
-                JavaScriptSerializer serializer = new JavaScriptSerializer();
-                serializer.MaxJsonLength = 1024 * 1024;
-                Dictionary<string, object> root = serializer.Deserialize<Dictionary<string, object>>(json);
-                if (root == null) throw new InvalidDataException("GitHub 没有返回可用的 Release 信息");
-                string tag = GetString(root, "tag_name");
-                string version = NormalizeVersion(tag);
-                if (String.IsNullOrWhiteSpace(version)) throw new InvalidDataException("最新 Release 没有正确的版本标签");
-
-                string safeTag = tag.Trim();
-                string url = String.Format(ReleaseArchiveTemplate, Uri.EscapeDataString(safeTag));
-                string assetName = "x-image-photoshop-" + safeTag + ".zip";
-                if (!Uri.IsWellFormedUriString(url, UriKind.Absolute) || !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                using (TimeoutWebClient client = CreateWebClient())
                 {
-                    throw new InvalidDataException("更新包下载地址无效");
+                    string json = client.DownloadString(LatestReleaseApi);
+                    JavaScriptSerializer serializer = new JavaScriptSerializer();
+                    serializer.MaxJsonLength = 1024 * 1024;
+                    Dictionary<string, object> root = serializer.Deserialize<Dictionary<string, object>>(json);
+                    if (root == null) throw new InvalidDataException("更新服务器没有返回可用的版本信息");
+
+                    string tag = GetString(root, "tag_name");
+                    string version = NormalizeVersion(tag);
+                    if (String.IsNullOrWhiteSpace(version)) throw new InvalidDataException("更新服务器的版本标签无效");
+
+                    string assetName = GetString(root, "asset_name");
+                    string url = GetString(root, "download_url");
+                    long assetSize = GetLong(root, "asset_size");
+                    string sha256 = GetString(root, "sha256");
+                    if (String.IsNullOrWhiteSpace(assetName) || Path.GetFileName(assetName) != assetName)
+                        throw new InvalidDataException("更新包文件名无效");
+                    Uri downloadUri;
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out downloadUri) || downloadUri.Scheme != Uri.UriSchemeHttps || !String.Equals(downloadUri.Host, "updates.8.208.32.40.sslip.io", StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("更新包下载地址不属于即杏智绘更新服务器");
+                    if (assetSize <= 0 || assetSize > MaxPackageBytes)
+                        throw new InvalidDataException("更新包大小无效");
+                    if (sha256.Length != 64 || !System.Text.RegularExpressions.Regex.IsMatch(sha256, "\\A[0-9a-fA-F]{64}\\z"))
+                        throw new InvalidDataException("更新包 SHA-256 格式无效");
+
+                    return new ReleaseInfo(version, assetName, url, assetSize, sha256);
                 }
-                return new ReleaseInfo(version, assetName, url, 0L);
+            }
+            catch (Exception error)
+            {
+                Log("Update server request failed: " + error);
+                throw new WebException("无法连接即杏智绘更新服务器，请检查网络后重试。", error);
             }
         }
 
@@ -200,14 +215,19 @@ namespace JXImageUpdater
             {
                 throw new InvalidDataException("更新包下载不完整，请稍后重试");
             }
-            Log("Downloaded " + release.AssetName + " SHA256=" + ComputeSha256(destination));
+            string sha256 = ComputeSha256(destination);
+            if (!String.IsNullOrWhiteSpace(release.Sha256) && !String.Equals(sha256, release.Sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("更新包 SHA-256 校验失败，旧版本没有修改");
+            }
+            Log("Downloaded " + release.AssetName + " SHA256=" + sha256);
         }
 
         private static TimeoutWebClient CreateWebClient()
         {
             TimeoutWebClient client = new TimeoutWebClient();
             client.Headers[HttpRequestHeader.UserAgent] = "JX-Image-Photoshop-Updater";
-            client.Headers[HttpRequestHeader.Accept] = "application/vnd.github+json";
+            client.Headers[HttpRequestHeader.Accept] = "application/json";
             return client;
         }
 
@@ -461,7 +481,7 @@ namespace JXImageUpdater
 
         private static string FriendlyMessage(Exception error)
         {
-            if (error is WebException) return "无法连接 GitHub，请检查网络后重试。";
+            if (error is WebException) return error.Message;
             if (error is UnauthorizedAccessException) return "没有权限替换 Photoshop 插件目录，请允许管理员权限后重试。";
             if (error is OperationCanceledException) return "本次更新已取消，旧版本没有修改。";
             return error.Message;
@@ -489,13 +509,15 @@ namespace JXImageUpdater
             internal readonly string AssetName;
             internal readonly string DownloadUrl;
             internal readonly long AssetSize;
+            internal readonly string Sha256;
 
-            internal ReleaseInfo(string version, string assetName, string downloadUrl, long assetSize)
+            internal ReleaseInfo(string version, string assetName, string downloadUrl, long assetSize, string sha256)
             {
                 Version = version;
                 AssetName = assetName;
                 DownloadUrl = downloadUrl;
                 AssetSize = assetSize;
+                Sha256 = sha256;
             }
         }
 
