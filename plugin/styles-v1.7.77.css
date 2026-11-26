@@ -15133,7 +15133,7 @@ body.is-library-workspace-active > .app-shell > #styleLibraryWorkspace > .style-
 
 #editorWorkspace > .output-card > .auto-repair-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
   align-items: center;
   gap: 6px;
   margin: 4px 0 0;
@@ -15540,4 +15540,36 @@ body *::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+}
+
+#notificationLayer.has-update-progress {
+  overflow: visible !important;
+}
+
+#notificationLayer .notification-progress {
+  display: none;
+}
+
+#notificationLayer.has-update-progress .notification-progress {
+  display: block !important;
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 1px;
+  z-index: 2;
+  height: 3px;
+  margin: 0;
+  border-radius: 0;
+  background: rgba(31, 54, 49, 0.18);
+}
+
+#notificationLayer.has-update-progress .notification-progress-fill {
+  width: 30%;
+  border-radius: 0;
+  animation: notification-update-progress 1.5s ease-in-out infinite;
+}
+
+@keyframes notification-update-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(340%); }
 }

@@ -1,8 +1,8 @@
 "use strict";
 
 const PROTOCOL = "jx-auto-selection-file-v1";
-const PARTS = Object.freeze({ upper: [4, 17], lower: [5, 6], clothes: [4, 5, 6, 7, 8, 17], head: [1, 2, 3, 11], shoes: [9, 10] });
-const PART_LABELS = Object.freeze({ upper: "上衣", lower: "下装", clothes: "整套服装", head: "头部（含头发）", shoes: "鞋" });
+const PARTS = Object.freeze({ upper: [4, 17], lower: [5, 6, 8], dress: [7], clothes: [4, 5, 6, 7, 8, 17], head: [1, 2, 3, 11], shoes: [9, 10] });
+const PART_LABELS = Object.freeze({ upper: "上衣", lower: "下装", dress: "连衣裙", clothes: "整套服装", head: "头部（含头发）", shoes: "鞋" });
 
 function classifyReference(labels) {
   const counts = new Uint32Array(18);
@@ -86,6 +86,192 @@ function selectionPlan(labels, mapWidth, mapHeight, width, height, part) {
   return { bounds, target, ratio, part, mask: { bytes, width: cropWidth, height: cropHeight, bounds } };
 }
 
+function garmentSelectionPlans(labels, mapWidth, mapHeight, width, height) {
+  const plans = [];
+  for (const part of ["upper", "lower", "dress"]) {
+    try {
+      plans.push(selectionPlan(labels, mapWidth, mapHeight, width, height, part));
+    } catch (error) {
+      if (!/没有识别到该区域/.test(String(error && error.message || error))) throw error;
+    }
+  }
+  if (!plans.length) throw new Error("没有识别到上衣、下装或连衣裙，请更换图片后重试");
+  return plans;
+}
+
+function featherMaskInward(source, width, height) {
+  if (!source || source.length !== width * height || !Number.isInteger(width) || !Number.isInteger(height)) {
+    throw new Error("服装蒙版尺寸无效");
+  }
+  const kernel = [1, 4, 10, 20, 31, 40, 44, 40, 31, 20, 10, 4, 1];
+  const horizontal = new Uint8Array(source.length);
+  const softened = new Uint8Array(source.length);
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    for (let x = 0; x < width; x += 1) {
+      let total = 0;
+      for (let offset = -6; offset <= 6; offset += 1) {
+        const sampleX = Math.max(0, Math.min(width - 1, x + offset));
+        total += source[row + sampleX] * kernel[offset + 6];
+      }
+      horizontal[row + x] = Math.round(total / 256);
+    }
+  }
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    for (let x = 0; x < width; x += 1) {
+      let total = 0;
+      for (let offset = -6; offset <= 6; offset += 1) {
+        const sampleY = Math.max(0, Math.min(height - 1, y + offset));
+        total += horizontal[sampleY * width + x] * kernel[offset + 6];
+      }
+      softened[row + x] = source[row + x] ? Math.min(source[row + x], Math.round(total / 256)) : 0;
+    }
+  }
+  return softened;
+}
+
+function featherMaskPercent(source, width, height, percent = 0.05) {
+  if (!source || source.length !== width * height || !Number.isInteger(width) || !Number.isInteger(height) ||
+      !Number.isFinite(percent) || percent < 0 || percent > 1) {
+    throw new Error("服装蒙版尺寸或羽化比例无效");
+  }
+  const radius = Math.max(1, Math.round(Math.min(width, height) * percent));
+  const horizontal = new Uint8Array(source.length);
+  const output = new Uint8Array(source.length);
+  const diameter = radius * 2 + 1;
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    let sum = 0;
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      if (dx >= 0 && dx < width) sum += source[row + dx];
+    }
+    for (let x = 0; x < width; x += 1) {
+      horizontal[row + x] = Math.round(sum / diameter);
+      const leaving = x - radius;
+      const entering = x + radius + 1;
+      if (leaving >= 0) sum -= source[row + leaving];
+      if (entering < width) sum += source[row + entering];
+    }
+  }
+  for (let x = 0; x < width; x += 1) {
+    let sum = 0;
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      if (dy >= 0 && dy < height) sum += horizontal[dy * width + x];
+    }
+    for (let y = 0; y < height; y += 1) {
+      const index = y * width + x;
+      output[index] = source[index] ? Math.round(sum / diameter) : 0;
+      const leaving = y - radius;
+      const entering = y + radius + 1;
+      if (leaving >= 0) sum -= horizontal[leaving * width + x];
+      if (entering < height) sum += horizontal[entering * width + x];
+    }
+  }
+  return { bytes: output, radius, percent };
+}
+
+function decontaminateGarmentEdge(rgba, mask, width, height, radius = 5) {
+  if (!rgba || rgba.length !== width * height * 4 || !mask || mask.length !== width * height) {
+    throw new Error("服装边缘颜色数据无效");
+  }
+  const radiusSquared = radius * radius;
+  for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) {
+    const index = y * width + x;
+    if (mask[index] === 0 || mask[index] === 255) continue;
+    let nearest = -1;
+    let nearestDistance = radiusSquared + 1;
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      const sampleY = y + dy;
+      if (sampleY < 0 || sampleY >= height) continue;
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const distance = dx * dx + dy * dy;
+        if (distance >= nearestDistance) continue;
+        const sampleX = x + dx;
+        if (sampleX < 0 || sampleX >= width) continue;
+        const sampleIndex = sampleY * width + sampleX;
+        if (mask[sampleIndex] !== 255) continue;
+        nearest = sampleIndex;
+        nearestDistance = distance;
+      }
+    }
+    if (nearest < 0) continue;
+    for (let channel = 0; channel < 3; channel += 1) {
+      rgba[index * 4 + channel] = rgba[nearest * 4 + channel];
+    }
+  }
+  return rgba;
+}
+
+function refineGarmentMatte(pixels, components, binaryMask, alphaMask, width, height, radius = 6) {
+  if (!pixels || ![3, 4].includes(components) || pixels.length < width * height * components ||
+      !binaryMask || binaryMask.length !== width * height || !alphaMask || alphaMask.length !== width * height) {
+    throw new Error("服装边缘抠图数据无效");
+  }
+  const interior = new Uint8Array(binaryMask.length);
+  for (let y = 1; y < height - 1; y += 1) for (let x = 1; x < width - 1; x += 1) {
+    const index = y * width + x;
+    if (binaryMask[index] !== 255) continue;
+    let solid = true;
+    for (let dy = -1; dy <= 1 && solid; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
+      if (binaryMask[(y + dy) * width + x + dx] !== 255) { solid = false; break; }
+    }
+    if (solid) interior[index] = 1;
+  }
+
+  const radiusSquared = radius * radius;
+  for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) {
+    const index = y * width + x;
+    if (binaryMask[index] !== 255 || alphaMask[index] === 0 || alphaMask[index] === 255) continue;
+    let foreground = -1, background = -1;
+    let foregroundDistance = radiusSquared + 1, backgroundDistance = radiusSquared + 1;
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      const sampleY = y + dy;
+      if (sampleY < 0 || sampleY >= height) continue;
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const distance = dx * dx + dy * dy;
+        if (distance > radiusSquared) continue;
+        const sampleX = x + dx;
+        if (sampleX < 0 || sampleX >= width) continue;
+        const sampleIndex = sampleY * width + sampleX;
+        if (interior[sampleIndex] && distance < foregroundDistance) {
+          foreground = sampleIndex;
+          foregroundDistance = distance;
+        }
+        if (binaryMask[sampleIndex] === 0 && distance < backgroundDistance) {
+          background = sampleIndex;
+          backgroundDistance = distance;
+        }
+      }
+    }
+    if (foreground < 0 || background < 0) continue;
+
+    const pixelOffset = index * components;
+    const foregroundOffset = foreground * components;
+    const backgroundOffset = background * components;
+    let dot = 0, lengthSquared = 0;
+    for (let channel = 0; channel < 3; channel += 1) {
+      const direction = pixels[foregroundOffset + channel] - pixels[backgroundOffset + channel];
+      dot += (pixels[pixelOffset + channel] - pixels[backgroundOffset + channel]) * direction;
+      lengthSquared += direction * direction;
+    }
+    if (lengthSquared < 900) continue;
+    const estimate = dot / lengthSquared;
+    if (estimate < -0.1 || estimate > 1.1) continue;
+    const opacity = Math.max(0, Math.min(1, estimate));
+    let residualSquared = 0;
+    for (let channel = 0; channel < 3; channel += 1) {
+      const expected = pixels[backgroundOffset + channel] + opacity *
+        (pixels[foregroundOffset + channel] - pixels[backgroundOffset + channel]);
+      const residual = pixels[pixelOffset + channel] - expected;
+      residualSquared += residual * residual;
+    }
+    if (residualSquared > 60 * 60 * 3) continue;
+    alphaMask[index] = Math.min(alphaMask[index], Math.round(opacity * 255));
+  }
+  return alphaMask;
+}
+
 // Local edit templates use the supplied references for identity or product details
 // and keep the original crop as the authority for pose, perspective and lighting.
 const REPAIR_DETAILS = Object.freeze({
@@ -158,8 +344,13 @@ function createLocalSelectionClient({ folder, textFormat, launch, decodeBase64, 
     async detect(image, width, height, part) {
       const parsed = await parse(image);
       return { ...selectionPlan(parsed.labels, parsed.width, parsed.height, width, height, part), inferenceMs: parsed.inferenceMs };
+    },
+    async detectGarments(image, width, height) {
+      const parsed = await parse(image);
+      return garmentSelectionPlans(parsed.labels, parsed.width, parsed.height, width, height)
+        .map((plan) => ({ ...plan, inferenceMs: parsed.inferenceMs }));
     }
   };
 }
 
-module.exports = { PROTOCOL, PARTS, PART_LABELS, classifyReference, resolveReferencePart, selectionPlan, defaultRepairPrompt, createLocalSelectionClient };
+module.exports = { PROTOCOL, PARTS, PART_LABELS, classifyReference, resolveReferencePart, selectionPlan, garmentSelectionPlans, featherMaskInward, featherMaskPercent, decontaminateGarmentEdge, refineGarmentMatte, defaultRepairPrompt, createLocalSelectionClient };

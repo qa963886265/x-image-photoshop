@@ -1,7 +1,7 @@
 {
   "id": "llai.psapi.selectioneditor",
   "name": " ",
-  "version": "1.10.48",
+  "version": "1.10.58",
   "main": "index.html",
   "manifestVersion": 6,
   "host": {
@@ -67,6 +67,7 @@
         "https://cdn.lingdong5.com",
         "https://api.github.com",
         "https://raw.githubusercontent.com",
+        "https://updates.8.208.32.40.sslip.io",
         "https://cms-assets.youmind.com"
       ]
     },

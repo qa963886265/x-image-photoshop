@@ -3,15 +3,20 @@ using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading;
+using System.Web.Script.Serialization;
 
 internal static class JXSelectionModels
 {
+    private const string PluginId = "llai.psapi.selectioneditor";
+    private const string ProgressFileName = "jx-model-download-progress.json";
+
     private static int Main()
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JXImagePhotoshop", "auto-selection");
         var log = Path.Combine(dir, "model-download-error.log");
         try
         {
+            WriteProgress("checking", "", 0, 0, "正在检查本地模型");
             using (var mutex = new Mutex(false, @"Local\JXImagePhotoshopSelectionModels"))
             {
                 try { if (!mutex.WaitOne(0)) return 0; }
@@ -20,6 +25,7 @@ internal static class JXSelectionModels
                 {
                     EnsureModels(dir);
                     File.Delete(log);
+                    WriteProgress("complete", "", 0, 0, "本地模型已就绪");
                     return 0;
                 }
                 finally { mutex.ReleaseMutex(); }
@@ -30,8 +36,44 @@ internal static class JXSelectionModels
             try { File.WriteAllText(log, error.ToString()); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
+            WriteProgress("error", "", 0, 0, error.Message);
             return 1;
         }
+    }
+
+    private static void WriteProgress(string stage, string model, long downloaded, long total, string message)
+    {
+        try
+        {
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string root = Path.Combine(appData, "Adobe", "UXP", "PluginsStorage", "PHSP");
+            if (!Directory.Exists(root)) return;
+            var serializer = new JavaScriptSerializer();
+            var payload = serializer.Serialize(new {
+                protocol = "jx-model-download-progress-v1",
+                stage = stage,
+                model = model,
+                downloadedBytes = downloaded,
+                totalBytes = total,
+                message = message,
+                updatedAt = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds
+            });
+            foreach (string host in Directory.GetDirectories(root))
+            foreach (string kind in new[] { "External", "Developer" })
+            {
+                string marker = Path.Combine(host, kind, PluginId, "PluginData", ProgressFileName);
+                if (!File.Exists(marker)) continue;
+                string temporary = marker + ".next";
+                try
+                {
+                    File.WriteAllText(temporary, payload);
+                    File.Replace(temporary, marker, null);
+                }
+                catch (IOException) { try { if (File.Exists(temporary)) File.Delete(temporary); } catch { } }
+                catch (UnauthorizedAccessException) { try { if (File.Exists(temporary)) File.Delete(temporary); } catch { } }
+            }
+        }
+        catch { }
     }
 
     private static void EnsureModels(string dir)
@@ -62,10 +104,13 @@ internal static class JXSelectionModels
         if (Matches(destination, size, hash)) return;
         var temporary = destination + ".download";
         Exception lastError = null;
+        WriteProgress("downloading", name, 0, size, "正在下载");
         try
         {
+            int sourceIndex = 0;
             foreach (var source in sources)
             {
+                sourceIndex++;
                 try
                 {
                     var request = (HttpWebRequest)WebRequest.Create(source);
@@ -78,13 +123,20 @@ internal static class JXSelectionModels
                     {
                         if (response.ResponseUri.Scheme != "https") throw new InvalidDataException("Expected HTTPS");
                         var buffer = new byte[256 * 1024];
+                        long nextReport = 1024 * 1024;
                         int count;
                         while ((count = input.Read(buffer, 0, buffer.Length)) > 0)
                         {
                             if (output.Length + count > size) throw new InvalidDataException("Unexpected model size: " + name);
                             output.Write(buffer, 0, count);
+                            if (output.Length >= nextReport)
+                            {
+                                WriteProgress("downloading", name, output.Length, size, "正在下载（来源 " + sourceIndex + "/" + sources.Length + "）");
+                                nextReport = output.Length + 1024 * 1024;
+                            }
                         }
                     }
+                    WriteProgress("verifying", name, size, size, "下载完成，正在校验文件");
                     if (!Matches(temporary, size, hash)) throw new InvalidDataException("Model checksum mismatch: " + name);
                     if (File.Exists(destination)) File.Replace(temporary, destination, null);
                     else File.Move(temporary, destination);

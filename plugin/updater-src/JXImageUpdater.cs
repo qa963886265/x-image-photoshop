@@ -16,8 +16,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("即杏智绘 Photoshop 插件更新程序")]
 [assembly: AssemblyCompany("即杏智绘项目团队")]
 [assembly: AssemblyProduct("即杏智绘")]
-[assembly: AssemblyVersion("1.10.48.0")]
-[assembly: AssemblyFileVersion("1.10.48.0")]
+[assembly: AssemblyVersion("1.10.50.0")]
+[assembly: AssemblyFileVersion("1.10.50.0")]
 
 namespace JXImageUpdater
 {
@@ -166,7 +166,8 @@ namespace JXImageUpdater
             {
                 using (TimeoutWebClient client = CreateWebClient())
                 {
-                    string json = client.DownloadString(LatestReleaseApi);
+                    byte[] response = client.DownloadData(LatestReleaseApi);
+                    string json = new UTF8Encoding(false, true).GetString(response);
                     JavaScriptSerializer serializer = new JavaScriptSerializer();
                     serializer.MaxJsonLength = 1024 * 1024;
                     Dictionary<string, object> root = serializer.Deserialize<Dictionary<string, object>>(json);

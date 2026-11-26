@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title></title>
-  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.40" />
+  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.58" />
   <style>
     #referenceList > #referenceAddWrap {
       position: relative !important;
@@ -68,6 +68,9 @@
               <small id="statusDetail">请先在 Photoshop 中框选要修改的区域</small>
             </div>
             <span id="statusClose" class="status-close" role="button" tabindex="0" aria-label="关闭通知">X</span>
+          </div>
+          <div id="notificationProgress" class="generation-job-progress notification-progress" role="progressbar" aria-label="更新进度" aria-valuetext="更新进行中">
+            <div id="notificationProgressFill" class="generation-job-progress-fill"></div>
           </div>
         </div>
         <nav id="workspaceTabs" class="workspace-tabs" aria-label="工作页面">
@@ -176,6 +179,7 @@
             <option value="upper">上衣</option><option value="lower">下装</option><option value="shoes">鞋</option>
           </select>
           <button id="autoRepairDetect" class="action-button" type="button" title="仅本地识别选区，不生成、不计费">自动框选</button>
+          <button id="autoRepairExtractClothes" class="action-button" type="button" title="在原图像素位置创建可编辑服装蒙版，边缘羽化 5%">提取服装</button>
           <button id="autoRepairRun" class="primary-button" type="button" title="请先添加参考图；自动框选、修图并精确回填一张">一键修图</button>
         </div>
         <div class="parameter-row">
@@ -822,6 +826,6 @@
       </div>
     </div>
 
-  <script src="main-v1.7.77.js?v=1.10.40"></script>
+  <script src="main-v1.7.77.js?v=1.10.58"></script>
   </body>
 </html>

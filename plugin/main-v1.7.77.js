@@ -4,7 +4,7 @@ const photoshop = require("photoshop");
 const uxp = require("uxp");
 const { API_CONFIG, UPDATE_CONFIG, MODEL_CONFIGS } = require("./lib/constants.js");
 const { createStyleLibraryUpdater, sha256Hex } = require("./lib/style-library-updates.js");
-const { defaultRepairPrompt, createLocalSelectionClient, resolveReferencePart, PART_LABELS } = require("./lib/auto-selection.js");
+const { defaultRepairPrompt, createLocalSelectionClient, resolveReferencePart, featherMaskPercent, PART_LABELS } = require("./lib/auto-selection.js");
 let automaticInsertionTail = Promise.resolve();
 let GPT_IMAGE2_STYLE_LIBRARY = null;
 const {
@@ -95,6 +95,9 @@ const PERSISTENT_HISTORY_INDEX_TEMP = "history-index.next.json";
 const COLOR_SAMPLE_POLL_MS = 250;
 const COLOR_SAMPLE_TIMEOUT_MS = 60 * 1000;
 const STATUS_HIDE_DELAY_MS = 5000;
+const MODEL_PROGRESS_POLL_MS = 5000;
+const UPDATE_LAUNCH_TIMEOUT_MS = 120 * 1000;
+const MODEL_PROGRESS_FILE = "jx-model-download-progress.json";
 const COLOR_REPLACE_MAX_PIXELS = 12 * 1024 * 1024;
 const COLOR_REPLACE_TOLERANCE = 0.55;
 const PALETTE_MATCH_MAX_PIXELS = 6 * 1024 * 1024;
@@ -197,6 +200,10 @@ let referenceTileSize = 80;
 let notificationLayoutTimer = null;
 let generationProgressTimer = null;
 let statusHideTimer = null;
+let updateLaunchRecoveryTimer = null;
+let modelProgressPollTimer = null;
+let modelProgressFolder = null;
+let lastModelProgressStage = "";
 let persistentHistoryFolderPromise = null;
 let historyPersistenceQueue = Promise.resolve();
 let pendingHistoryRecoveryController = null;
@@ -306,14 +313,14 @@ function cacheElements() {
   const ids = [
     "appShell", "pluginVersion", "brandSettingsOpen", "settingsWorkspaceTab", "workspaceTabs",
     "referenceStrip", "referenceList", "referenceAddWrap", "referenceAdd", "referenceSourceMenu", "referenceQuickActions", "referenceQuickLayer", "referenceQuickSelection", "referenceQuickClear",
-    "autoRepairPart", "autoRepairDetect", "autoRepairRun", "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
+    "autoRepairPart", "autoRepairDetect", "autoRepairExtractClothes", "autoRepairRun", "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
     "precisionPlacement", "precisionPlacementToggle", "optimizePromptBeforeRun", "optimizePromptToggle", "prompt", "promptCount", "promptMentionMenu", "promptContinuationCapture", "promptContinuationCaret", "modelChannel", "aspectRatio", "resolution", "generationCount",
     "resolvedDimensions", "run", "stop", "editorClear", "insert", "resultStage", "resultEmpty", "resultImage",
     "resultPreviewOverlay", "resultPreviewViewport", "resultPreviewImage", "resultPreviewClose", "resultPreviewSave", "resultPreviewCopyPrompt", "resultPreviewResolution",
     "promptOptimizationReview", "promptOptimizationResult", "promptOptimizationKeep", "promptOptimizationAccept",
     "taskDrawerOverlay", "taskDrawerClose", "taskDrawerImage", "taskDrawerTitle",
     "taskDrawerModel", "taskDrawerSize", "taskDrawerTime", "taskDrawerPrompt", "taskDrawerReuse", "taskDrawerInsert",
-    "notificationLayer", "status", "statusIcon", "statusTitle", "statusDetail", "statusClose",
+    "notificationLayer", "status", "statusIcon", "statusTitle", "statusDetail", "statusClose", "notificationProgress", "notificationProgressFill",
     "keyOverlay", "keyTitle", "keyInput",
     "keyError", "cancelKey", "saveKey", "promptLibrary", "favoritePrompt", "styleLibraryOpen", "styleLibraryWorkspace", "styleLibraryClose", "styleLibrarySearch", "styleLibraryCategory", "styleLibraryCount", "styleLibraryList", "styleLibraryPrevious", "styleLibraryNext", "styleLibraryPage", "styleLibraryTotal", "styleLibraryDetailOverlay", "styleLibraryDetailClose", "styleLibraryDetailImage", "styleLibraryDetailImageEmpty", "styleLibraryDetailTitle", "styleLibraryDetailMeta", "styleLibraryDetailPrompt", "styleLibraryDetailApply",
     "styleLibraryUpdateStatus",
@@ -999,7 +1006,14 @@ function hideStatus() {
   if (elements.status) elements.status.classList.add("is-hidden");
 }
 
-function setStatus(kind, title, detail) {
+function setUpdateProgress(active) {
+  if (!elements.notificationProgress || !elements.notificationLayer) return;
+  elements.notificationLayer.classList.toggle("has-update-progress", Boolean(active));
+  elements.notificationProgress.setAttribute("aria-busy", active ? "true" : "false");
+  if (active) elements.notificationLayer.classList.remove("is-hidden");
+}
+
+function setStatus(kind, title, detail, durationMs = STATUS_HIDE_DELAY_MS) {
   if (pluginDestroyed || !elements.status || !elements.statusIcon || !elements.statusTitle || !elements.statusDetail) return;
   const resolvedKind = kind || "idle";
   if (statusHideTimer !== null) {
@@ -1022,11 +1036,14 @@ function setStatus(kind, title, detail) {
   elements.status.classList.remove("is-hidden");
   // Notifications are transient. Long-running work is still represented by
   // the task progress area, so it does not need to keep this bar open.
-  statusHideTimer = setTimeout(() => {
-    statusHideTimer = null;
-    if (elements.notificationLayer) elements.notificationLayer.classList.add("is-hidden");
-    if (elements.status) elements.status.classList.add("is-hidden");
-  }, STATUS_HIDE_DELAY_MS);
+  if (durationMs > 0) {
+    statusHideTimer = setTimeout(() => {
+      statusHideTimer = null;
+      if (state.installingUpdate) return;
+      if (elements.notificationLayer) elements.notificationLayer.classList.add("is-hidden");
+      if (elements.status) elements.status.classList.add("is-hidden");
+    }, durationMs);
+  }
 }
 
 function normalizeUpdateVersion(value) {
@@ -1044,15 +1061,15 @@ function compareUpdateVersions(left, right) {
   return 0;
 }
 
-function isDifferentUpdateVersion(left, right) {
-  return compareUpdateVersions(left, right) !== 0;
+function isNewerUpdateVersion(left, right) {
+  return compareUpdateVersions(left, right) > 0;
 }
 
 function renderUpdateControl() {
   if (!elements.pluginVersion) return;
   const availableVersion = state.updateAvailable && state.updateAvailable.version;
   const hasUpdate = Boolean(
-    availableVersion && isDifferentUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)
+    availableVersion && isNewerUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)
   );
   elements.pluginVersion.classList.toggle("has-update", hasUpdate);
   elements.pluginVersion.textContent = hasUpdate
@@ -1071,7 +1088,7 @@ function renderUpdateControl() {
 
 function showUpdateAvailableNotice(source) {
   const availableVersion = state.updateAvailable && state.updateAvailable.version;
-  if (!availableVersion || !isDifferentUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)) {
+  if (!availableVersion || !isNewerUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)) {
     return false;
   }
   setStatus(
@@ -1100,7 +1117,7 @@ function loadUpdateCheckCache() {
     const cached = JSON.parse(localStorage.getItem(UPDATE_CHECK_STORAGE) || "{}");
     state.updateLastCheckedAt = Number(cached.checkedAt) || 0;
     const availableVersion = normalizeUpdateVersion(cached.availableVersion);
-    if (availableVersion && isDifferentUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)) {
+    if (availableVersion && isNewerUpdateVersion(availableVersion, UPDATE_CONFIG.currentVersion)) {
       state.updateAvailable = { version: availableVersion, cached: true };
     }
   } catch (_) {
@@ -1150,7 +1167,7 @@ async function checkForPluginUpdate(manual) {
   try {
     const release = await fetchLatestPluginRelease();
     state.updateLastCheckedAt = Date.now();
-    state.updateAvailable = isDifferentUpdateVersion(release.version, UPDATE_CONFIG.currentVersion)
+    state.updateAvailable = isNewerUpdateVersion(release.version, UPDATE_CONFIG.currentVersion)
       ? release
       : null;
     saveUpdateCheckCache();
@@ -1178,6 +1195,66 @@ async function checkForPluginUpdate(manual) {
   }
 }
 
+function formatModelBytes(value) {
+  const bytes = Math.max(0, Number(value) || 0);
+  return bytes >= 1024 * 1024 * 1024
+    ? `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function pollLocalModelProgress() {
+  try {
+    if (!modelProgressFolder) modelProgressFolder = await localFileSystem.getDataFolder();
+    const file = await modelProgressFolder.getEntry(MODEL_PROGRESS_FILE);
+    const payload = JSON.parse(String(await file.read({ format: formats.utf8 }) || "{}"));
+    if (payload.protocol !== "jx-model-download-progress-v1") return;
+    const updatedAt = Number(payload.updatedAt) || 0;
+    if (!updatedAt || Date.now() - updatedAt > 180000) return;
+    if (payload.stage === "complete") {
+      if (lastModelProgressStage && lastModelProgressStage !== "complete") {
+        setStatus("success", "本地模型已就绪", "自动框选模型检查完成", STATUS_HIDE_DELAY_MS);
+      }
+      lastModelProgressStage = "complete";
+      return;
+    }
+    if (payload.stage === "error") {
+      const message = String(payload.message || "未知错误").slice(0, 240);
+      setStatus("warning", "本地模型下载失败", message, 0);
+      lastModelProgressStage = "error";
+      return;
+    }
+    if (payload.stage === "checking") {
+      setStatus("working", "正在检查本地识别模型", "检查模型文件完整性", 0);
+      lastModelProgressStage = payload.stage;
+      return;
+    }
+    const modelName = String(payload.model || "");
+    const displayName = modelName === "fashionclip.onnx" ? "FashionCLIP" : "服装分割模型";
+    const downloaded = Number(payload.downloadedBytes) || 0;
+    const total = Number(payload.totalBytes) || 0;
+    const percent = total > 0 ? Math.min(100, Math.floor(downloaded * 100 / total)) : 0;
+    let detail = `${formatModelBytes(downloaded)} / ${formatModelBytes(total)}（${percent}%）`;
+    if (payload.stage === "verifying") detail = "下载完成，正在校验完整性";
+    else if (payload.message) detail += ` · ${String(payload.message).slice(0, 80)}`;
+    setStatus("working", `正在下载${displayName}`, detail, 0);
+    lastModelProgressStage = payload.stage;
+  } catch (error) {
+    const name = String(error && error.name || "");
+    if (name !== "NotFoundError" && !/not found|does not exist/i.test(String(error && error.message || ""))) {
+      console.warn("无法读取本地模型下载进度", error);
+    }
+  }
+}
+
+function startLocalModelProgressPolling() {
+  if (modelProgressPollTimer !== null) clearInterval(modelProgressPollTimer);
+  modelProgressFolder = null;
+  modelProgressPollTimer = setInterval(() => {
+    pollLocalModelProgress().catch((error) => console.warn("读取本地模型下载进度失败", error));
+  }, MODEL_PROGRESS_POLL_MS);
+  pollLocalModelProgress().catch((error) => console.warn("读取本地模型下载进度失败", error));
+}
+
 async function launchPluginUpdater() {
   const pluginFolder = await localFileSystem.getPluginFolder();
   const updaterFolder = await pluginFolder.getEntry(UPDATE_CONFIG.updaterFolder);
@@ -1188,9 +1265,11 @@ async function launchPluginUpdater() {
   if (result) throw new Error(result);
   setStatus(
     "working",
-    "正在静默更新",
-    "文档已保存；更新程序将关闭 Photoshop、替换插件文件并自动重新打开"
+    "正在下载更新",
+    `正在下载并校验 v${state.updateAvailable && state.updateAvailable.version || "新版本"}，完成后将自动重启 Photoshop`,
+    0
   );
+  setUpdateProgress(true);
 }
 
 async function saveOpenDocumentsBeforeUpdate() {
@@ -1226,14 +1305,29 @@ async function prepareAndLaunchPluginUpdate() {
   }
   state.installingUpdate = true;
   updateControls();
+  setUpdateProgress(true);
   try {
     await saveOpenDocumentsBeforeUpdate();
     setStatus("working", "文档保存完成", "正在启动静默更新，随后会自动关闭 Photoshop");
     await launchPluginUpdater();
+    if (updateLaunchRecoveryTimer !== null) clearTimeout(updateLaunchRecoveryTimer);
+    updateLaunchRecoveryTimer = setTimeout(() => {
+      updateLaunchRecoveryTimer = null;
+      if (!state.installingUpdate) return;
+      state.installingUpdate = false;
+      updateControls();
+      setUpdateProgress(false);
+      setStatus("warning", "更新程序尚未关闭 Photoshop", "请检查更新程序是否仍在下载；如窗口已退出，可重新尝试更新");
+    }, UPDATE_LAUNCH_TIMEOUT_MS);
     return true;
   } catch (error) {
+    if (updateLaunchRecoveryTimer !== null) {
+      clearTimeout(updateLaunchRecoveryTimer);
+      updateLaunchRecoveryTimer = null;
+    }
     state.installingUpdate = false;
     updateControls();
+    setUpdateProgress(false);
     setStatus("warning", "更新已停止", error.message || error);
     throw error;
   }
@@ -1290,6 +1384,7 @@ function updateControls() {
     (reference.snapshot.autoSelection || reference === state.references[0] && reference.mode === "layer"));
   if (elements.autoRepairPart) elements.autoRepairPart.disabled = busy;
   if (elements.autoRepairDetect) elements.autoRepairDetect.disabled = busy || (full && !hasAutoReference);
+  if (elements.autoRepairExtractClothes) elements.autoRepairExtractClothes.disabled = busy || !app.documents.length;
   if (elements.autoRepairRun) elements.autoRepairRun.disabled = busy || state.runSubmissionPending || state.generationJobs.length > 0 || (full && !hasAutoReference);
   elements.referenceFromSelection.disabled = full;
   elements.referenceFromLayer.disabled = full;
@@ -13946,6 +14041,17 @@ async function encodeAutoSelectionReference(reference) {
 }
 
 async function prepareLocalSelectionModels() {
+  const dataFolder = await localFileSystem.getDataFolder();
+  const progress = await dataFolder.createFile(MODEL_PROGRESS_FILE, { overwrite: true });
+  await progress.write(JSON.stringify({
+    protocol: "jx-model-download-progress-v1",
+    stage: "checking",
+    model: "",
+    downloadedBytes: 0,
+    totalBytes: 0,
+    message: "正在检查本地模型",
+    updatedAt: Date.now()
+  }), { format: formats.utf8 });
   const plugin = await localFileSystem.getPluginFolder();
   const updater = await plugin.getEntry("updater");
   const installer = await updater.getEntry("JXSelectionModels.exe");
@@ -14014,13 +14120,9 @@ async function runLocalAutoSelection(part, references, targetReference) {
     if (part === "head") matchedHeadReferences = references.filter((_, index) => parts[index] === "head");
     setStatus("working", "正在框选" + PART_LABELS[part], "已根据参考图确认修图部位");
   }
-  const result = await client.detect(preview.image, sourceBounds.width, sourceBounds.height, part);
   const translate = (bounds) => ({ ...bounds,
     left: bounds.left + sourceBounds.left, right: bounds.right + sourceBounds.left,
     top: bounds.top + sourceBounds.top, bottom: bounds.bottom + sourceBounds.top });
-  result.bounds = translate(result.bounds);
-  result.target = translate(result.target);
-  result.mask.bounds = result.bounds;
   const validateSource = async (document) => {
     if (!document || Number(document.id) !== Number(source.documentId) || !documentMatchesSnapshot(document, source)) throw new Error("识别期间原文档已关闭或画布尺寸变化");
     const currentBytes = await readPreview(document);
@@ -14030,6 +14132,19 @@ async function runLocalAutoSelection(part, references, targetReference) {
       if (sha256Hex(bytes) !== preview.fingerprint) throw new Error("识别期间图像已改变，请重新识别");
     } finally { if (currentBytes && currentBytes.imageData) currentBytes.imageData.dispose(); }
   };
+  if (part === "garments") {
+    const garments = await client.detectGarments(preview.image, sourceBounds.width, sourceBounds.height);
+    for (const garment of garments) {
+      garment.bounds = translate(garment.bounds);
+      garment.target = translate(garment.target);
+      garment.mask.bounds = garment.bounds;
+    }
+    return { garments, source, validateSource };
+  }
+  const result = await client.detect(preview.image, sourceBounds.width, sourceBounds.height, part);
+  result.bounds = translate(result.bounds);
+  result.target = translate(result.target);
+  result.mask.bounds = result.bounds;
   await core.executeAsModal(async () => {
     const document = app.activeDocument;
     await validateSource(document);
@@ -14056,6 +14171,117 @@ async function runLocalAutoSelection(part, references, targetReference) {
   }, { commandName: "建立自动识别选区" });
   if (!String(getPromptValue()).trim()) { setPromptValue(defaultRepairPrompt(result.part)); updatePromptCount(); }
   return { ...result, source, validateSource, matchedHeadReferences };
+}
+
+async function extractClothesFromDocument() {
+  if (state.capturing || state.preparingJob || state.inserting || state.runSubmissionPending) return;
+  if (!app.documents.length) {
+    setStatus("warning", "请先打开图片", "选择包含服装的 Photoshop 文档后再提取");
+    return;
+  }
+
+  state.capturing = true;
+  updateControls();
+  let outputImageData = null;
+  try {
+    setStatus("working", "正在识别服装", "仅在本机处理，原图不会上传");
+    const detected = await runLocalAutoSelection("garments", [], null);
+    const summary = await core.executeAsModal(async (executionContext) => {
+      const document = app.activeDocument;
+      if (!document || Number(document.id) !== Number(detected.source.documentId)) {
+        throw new Error("识别期间活动文档已改变，请重新提取");
+      }
+      await detected.validateSource(document);
+      const anchor = document.activeLayers && document.activeLayers.length ? document.activeLayers[0] : null;
+      const suspension = await executionContext.hostControl.suspendHistory({
+        documentID: document.id,
+        name: "原像素服装图层与蒙版"
+      });
+      let lastLayer = null;
+      try {
+      for (let garmentIndex = 0; garmentIndex < detected.garments.length; garmentIndex += 1) {
+        const garment = detected.garments[garmentIndex];
+        const bounds = garment.bounds;
+        const mask = garment.mask;
+        const pixelCount = bounds.width * bounds.height;
+        if (!mask || !mask.bytes || mask.width !== bounds.width || mask.height !== bounds.height ||
+          mask.bytes.length !== pixelCount) throw new Error(`${PART_LABELS[garment.part]}蒙版数据不完整，请重试`);
+        executionContext.reportProgress({ value: 0.2 + garmentIndex / detected.garments.length * 0.65,
+          commandName: `正在提取${PART_LABELS[garment.part]}` });
+        const captured = await imaging.getPixels({
+          documentID: document.id,
+          componentSize: 8,
+          applyAlpha: true,
+          colorSpace: "RGB",
+          colorProfile: "sRGB IEC61966-2.1",
+          sourceBounds: { left: 0, top: 0, right: Math.round(Number(document.width)), bottom: Math.round(Number(document.height)) }
+        });
+        const canvasWidth = Math.round(Number(document.width));
+        const canvasHeight = Math.round(Number(document.height));
+        if (!captured || !captured.imageData || Number(captured.imageData.width) !== canvasWidth ||
+          Number(captured.imageData.height) !== canvasHeight) {
+          if (captured && captured.imageData) captured.imageData.dispose();
+          throw new Error("Photoshop 未能读取完整原图像素");
+        }
+        try {
+        const layer = await document.createLayer(constants.LayerKind.NORMAL, { name: PART_LABELS[garment.part] });
+        if (anchor && Number(anchor.id) !== Number(layer.id)) {
+          try { await layer.move(anchor, constants.ElementPlacement.PLACEBEFORE); } catch (_) {}
+        }
+        await selectDocumentAndLayer(document.id, layer.id);
+        await imaging.putPixels({
+          documentID: document.id,
+          layerID: layer.id,
+          imageData: captured.imageData,
+          replace: true,
+          targetBounds: { left: 0, top: 0 },
+          commandName: `保留${PART_LABELS[garment.part]}原图像素`
+        });
+        await createHideAllLayerMask();
+        const feathered = featherMaskPercent(mask.bytes, bounds.width, bounds.height, 0.05);
+        outputImageData = await imaging.createImageDataFromBuffer(feathered.bytes, {
+          width: bounds.width,
+          height: bounds.height,
+          components: 1,
+          chunky: false,
+          colorSpace: "Grayscale",
+          colorProfile: "Gray Gamma 2.2"
+        });
+        await imaging.putLayerMask({
+          documentID: document.id,
+          layerID: layer.id,
+          imageData: outputImageData,
+          kind: "user",
+          replace: false,
+          targetBounds: { left: bounds.left, top: bounds.top },
+          commandName: `写入${PART_LABELS[garment.part]}用户蒙版`
+        });
+        outputImageData.dispose();
+        outputImageData = null;
+        lastLayer = layer;
+        } finally {
+          captured.imageData.dispose();
+        }
+      }
+      await executionContext.hostControl.resumeHistory(suspension, true);
+      } catch (error) {
+        try { await executionContext.hostControl.resumeHistory(suspension, false); } catch (_) {}
+        throw error;
+      }
+      if (lastLayer) {
+        await selectLayerMask(document.id, lastLayer.id);
+      }
+      executionContext.reportProgress({ value: 1, commandName: "服装提取完成" });
+      return { documentTitle: document.title || document.name || "当前文档", layerNames: detected.garments.map((garment) => PART_LABELS[garment.part]) };
+    }, { commandName: "提取服装蒙版" });
+    setStatus("success", "服装蒙版已创建", `已在“${summary.documentTitle}”按原图像素创建服装图层和可编辑蒙版，边缘羽化 5%：${summary.layerNames.join("、")}`);
+  } catch (error) {
+    setStatus("error", "服装提取失败", error.message || error);
+  } finally {
+    if (outputImageData) outputImageData.dispose();
+    state.capturing = false;
+    updateControls();
+  }
 }
 
 async function handleAutomaticRepair(runAfterDetection = false) {
@@ -14198,6 +14424,9 @@ function bindEvents() {
 
   elements.autoRepairDetect.addEventListener("click", () => {
     handleAutomaticRepair(false).catch((error) => setStatus("error", "自动框选失败", error.message || error));
+  });
+  elements.autoRepairExtractClothes.addEventListener("click", () => {
+    extractClothesFromDocument().catch((error) => setStatus("error", "服装提取失败", error.message || error));
   });
   elements.autoRepairRun.addEventListener("click", () => {
     handleAutomaticRepair(true).catch((error) => setStatus("error", "自动修图失败", error.message || error));
@@ -15350,7 +15579,11 @@ async function initialize() {
   await loadVolcImageApiKey();
   startPricingAutoRefresh();
   refreshLivePricing("startup").catch(() => {});
-  prepareLocalSelectionModels().catch((error) => console.warn("本地识别模型安装程序未启动", error));
+  startLocalModelProgressPolling();
+  prepareLocalSelectionModels().catch((error) => {
+    console.warn("本地识别模型安装程序未启动", error);
+    setStatus("warning", "本地模型安装程序未启动", error.message || error);
+  });
   if (state.historyPersistenceError) {
     setStatus("warning", "本地生成历史读取不完整", state.historyPersistenceError);
   } else if (state.results.length) {

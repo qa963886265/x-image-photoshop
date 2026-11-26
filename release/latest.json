@@ -1,7 +1,7 @@
 {
-  "version": "1.10.48",
-  "tag": "v1.10.48",
-  "asset": "x-image-photoshop-v1.10.48.zip",
-  "title": "即杏智绘 v1.10.48",
-  "notes": "- 这是从 GitHub 过渡到独立更新服务器的最后一个引导版本。\n- 安装本版本后，插件只从更新服务器检查和下载后续版本，不再回退到 GitHub。\n- 安装包及服装分割模型由独立服务器分发；606 MB FashionCLIP 模型继续从原发布方下载。\n- SegFormer 仅供研究或评估。"
+  "version": "1.10.58",
+  "tag": "v1.10.58",
+  "asset": "x-image-photoshop-v1.10.58.zip",
+  "title": "即杏智绘 v1.10.58",
+  "notes": "- 服装提取恢复为原图原像素坐标，创建独立图层与可编辑 Photoshop 用户蒙版。\n- 服装蒙版边缘按区域短边的 5% 羽化，保留背景隐藏与原图像素不变。"
 }
