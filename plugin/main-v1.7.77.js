@@ -4,8 +4,11 @@ const photoshop = require("photoshop");
 const uxp = require("uxp");
 const { API_CONFIG, UPDATE_CONFIG, MODEL_CONFIGS } = require("./lib/constants.js");
 const { createStyleLibraryUpdater, sha256Hex } = require("./lib/style-library-updates.js");
-const { defaultRepairPrompt, createLocalSelectionClient, resolveReferencePart, featherMaskPercent, PART_LABELS } = require("./lib/auto-selection.js");
+const { defaultRepairPrompt, createLocalSelectionClient, resolveReferencePart, resolveGarmentAssignments, garmentReplacementPrompt, featherMaskPercent, PART_LABELS } = require("./lib/auto-selection.js");
 let automaticInsertionTail = Promise.resolve();
+let autoOutfitSetupTimer = null;
+let autoOutfitSetupRunning = false;
+let autoOutfitSetupSignature = "";
 let GPT_IMAGE2_STYLE_LIBRARY = null;
 const {
   clampBounds,
@@ -313,7 +316,7 @@ function cacheElements() {
   const ids = [
     "appShell", "pluginVersion", "brandSettingsOpen", "settingsWorkspaceTab", "workspaceTabs",
     "referenceStrip", "referenceList", "referenceAddWrap", "referenceAdd", "referenceSourceMenu", "referenceQuickActions", "referenceQuickLayer", "referenceQuickSelection", "referenceQuickClear",
-    "autoRepairPart", "autoRepairDetect", "autoRepairExtractClothes", "autoRepairRun", "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
+    "autoRepairExtractClothes", "referenceFromSelection", "referenceFromLayer", "referenceFromLocal", "referenceEmptyHint", "referenceCount",
     "precisionPlacement", "precisionPlacementToggle", "optimizePromptBeforeRun", "optimizePromptToggle", "prompt", "promptCount", "promptMentionMenu", "promptContinuationCapture", "promptContinuationCaret", "modelChannel", "aspectRatio", "resolution", "generationCount",
     "resolvedDimensions", "run", "stop", "editorClear", "insert", "resultStage", "resultEmpty", "resultImage",
     "resultPreviewOverlay", "resultPreviewViewport", "resultPreviewImage", "resultPreviewClose", "resultPreviewSave", "resultPreviewCopyPrompt", "resultPreviewResolution",
@@ -925,7 +928,6 @@ function initializeIslandSelects() {
     elements.aspectRatio,
     elements.resolution,
     elements.generationCount,
-    elements.autoRepairPart,
     elements.outfitModelChannel,
     elements.outfitResolution,
     elements.outfitGenerationCount,
@@ -1380,12 +1382,7 @@ function updateControls() {
   // the operation can start; disabling this button makes UXP swallow the
   // click entirely, leaving the reference area looking dead.
   elements.referenceAdd.disabled = full;
-  const hasAutoReference = state.references.some((reference) => reference.snapshot &&
-    (reference.snapshot.autoSelection || reference === state.references[0] && reference.mode === "layer"));
-  if (elements.autoRepairPart) elements.autoRepairPart.disabled = busy;
-  if (elements.autoRepairDetect) elements.autoRepairDetect.disabled = busy || (full && !hasAutoReference);
   if (elements.autoRepairExtractClothes) elements.autoRepairExtractClothes.disabled = busy || !app.documents.length;
-  if (elements.autoRepairRun) elements.autoRepairRun.disabled = busy || state.runSubmissionPending || state.generationJobs.length > 0 || (full && !hasAutoReference);
   elements.referenceFromSelection.disabled = full;
   elements.referenceFromLayer.disabled = full;
   elements.referenceFromLocal.disabled = full;
@@ -8701,6 +8698,7 @@ function swapReferences(firstId, secondId) {
   updateResolvedSize();
   updateControls();
   setStatus("idle", "参考图顺序已交换", `图 ${firstIndex + 1} 与图 ${secondIndex + 1} 已交换`);
+  scheduleAutomaticOutfitSetup();
 }
 
 function reorderReferenceNodes() {
@@ -9856,6 +9854,7 @@ async function captureSource(mode, captureOptions) {
     if (!batchManaged) {
       state.capturing = false;
       updateControls();
+      scheduleAutomaticOutfitSetup();
     }
   }
 }
@@ -9946,6 +9945,7 @@ async function captureSelectedLayers(options = {}) {
     state.capturing = false;
     updateControls();
     if (state.running) renderGenerationQueue();
+    if (added.length) scheduleAutomaticOutfitSetup();
   }
 }
 
@@ -10088,6 +10088,7 @@ async function importReferenceImages(options = {}) {
       `已导入 ${imported.length} 张参考图片`,
       notes.join("；")
     );
+    scheduleAutomaticOutfitSetup();
     return imported;
   } finally {
     state.capturing = false;
@@ -14111,7 +14112,17 @@ async function runLocalAutoSelection(part, references, targetReference) {
   }, { commandName: "准备自动识别预览" });
   let matchedHeadReferences;
   const parts = [];
-  if (part === "auto") {
+  let garmentAssignments = null;
+  if (part === "outfit") {
+    if (!references.length) throw new Error("请按顺序添加目标模特图和至少一张服装单品参考图");
+    for (let i = 0; i < references.length; i++) {
+      setStatus("working", "正在识别服装参考图", `图${i + 2} · ${i + 1} / ${references.length}`);
+      parts.push(await client.classify(await encodeAutoSelectionReference(references[i])));
+    }
+    garmentAssignments = resolveGarmentAssignments(parts);
+    part = garmentAssignments.map((assignment) => assignment.part);
+    setStatus("working", "正在框选目标服装", garmentAssignments.map((assignment) => PART_LABELS[assignment.part]).join("、"));
+  } else if (part === "auto") {
     for (let i = 0; i < references.length; i++) {
       setStatus("working", "正在识别参考图类别", (i + 1) + " / " + references.length);
       parts.push(await client.classify(await encodeAutoSelectionReference(references[i])));
@@ -14142,6 +14153,7 @@ async function runLocalAutoSelection(part, references, targetReference) {
     return { garments, source, validateSource };
   }
   const result = await client.detect(preview.image, sourceBounds.width, sourceBounds.height, part);
+  if (garmentAssignments) result.assignments = garmentAssignments;
   result.bounds = translate(result.bounds);
   result.target = translate(result.target);
   result.mask.bounds = result.bounds;
@@ -14284,67 +14296,92 @@ async function extractClothesFromDocument() {
   }
 }
 
-async function handleAutomaticRepair(runAfterDetection = false) {
-  if (referenceMutationBlocked() || state.runSubmissionPending || state.promptOptimizationReview) return;
-  if (runAfterDetection && state.generationJobs.length) {
-    setStatus("warning", "请等待当前任务完成", "本次修复会在生成后自动回填，完成后可继续下一张");
-    return;
-  }
-  const part = String(elements.autoRepairPart.value || "auto");
+function currentAutoOutfitSetupSignature() {
   const first = state.references[0];
-  const replacing = first && first.snapshot && (first.snapshot.autoSelection ||
-    state.references.length > 1 && (first.mode === "layer" || first.mode === "selection")) ? first : null;
-  const remainingReferences = state.references.filter((reference) => reference !== replacing && !reference.released && reference.file &&
-    String(reference.id) !== String(state.targetSnapshot && state.targetSnapshot.sourceReferenceId));
-  if (part === "auto" && !remainingReferences.length) {
-    setStatus("warning", "请先添加参考图", "添加白底单品图或清晰的头部参考图，也可以手动选择要框选的部位");
+  if (!first || state.references.length < 2) return "";
+  const source = state.targetSnapshot || first.snapshot || {};
+  const bounds = storageBounds(source.bounds);
+  const sourceKey = [source.documentId || "active", source.layerId || source.insertionAnchorLayerId || "canvas",
+    bounds ? [bounds.left, bounds.top, bounds.right, bounds.bottom].join(",") : "full"].join(":");
+  return `${sourceKey}|${state.references.slice(1).filter((reference) => reference && reference.file && !reference.released).map((reference) => reference.id).join(",")}`;
+}
+
+async function handleAutomaticOutfitSetup() {
+  if (autoOutfitSetupRunning || referenceMutationBlocked() || state.runSubmissionPending || state.promptOptimizationReview) return;
+  const first = state.references[0];
+  const garmentReferences = state.references.slice(1).filter((reference) => reference && reference.file && !reference.released);
+  if (!first || !first.file || !first.snapshot || !garmentReferences.length) return;
+  const signature = currentAutoOutfitSetupSignature();
+  if (!signature || signature === autoOutfitSetupSignature) return;
+  if (!app.documents.length) {
+    setStatus("warning", "需要打开目标图片", "请先在 Photoshop 中打开图一对应的原图；图二及后续图片作为服装单品参考图");
     return;
   }
-  if (runAfterDetection && !remainingReferences.length) {
-    setStatus("warning", "先添加服装或头部参考图", "点击参考图左侧“＋”，从本地添加参考图片后再点一键修图");
-    return;
+  if (first.mode === "import") {
+    const document = app.activeDocument;
+    if (Math.round(Number(document.width)) !== Math.round(Number(first.bounds.width)) ||
+        Math.round(Number(document.height)) !== Math.round(Number(first.bounds.height))) {
+      setStatus("warning", "目标图尺寸不匹配", "请在 Photoshop 中打开图一对应的原图，再添加服装参考图");
+      return;
+    }
   }
-  if (state.references.length >= MAX_REFERENCES && !replacing) {
-    setStatus("warning", "参考图已满", "请移除一张参考图，再开始自动修图");
-    return;
-  }
+
+  autoOutfitSetupRunning = true;
   state.capturing = true;
   updateControls();
-  let captured = null;
-  let detectedPart;
-  let matchedHeadReferences;
   try {
-    setStatus("working", "正在本地识别" + (PART_LABELS[part] || ""), "原图不会上传，识别过程中请不要编辑画布");
-    const detected = await runLocalAutoSelection(part, remainingReferences, replacing);
-    detectedPart = detected.part;
-    matchedHeadReferences = detected.matchedHeadReferences;
-    const sourceSnapshot = { ...detected.source, bounds: detected.bounds, editBounds: detected.bounds, solid: true };
-    captured = await captureSource("selection", {
-      batchManaged: true, silentStatus: true, sourceSnapshot,
+    setStatus("working", "正在自动识别服装", "依次分析图二及后续单品图，在图一原图上框选对应服装");
+    const detected = await runLocalAutoSelection("outfit", garmentReferences, first);
+    const prompt = garmentReplacementPrompt(detected.assignments);
+    const captured = await captureSource("selection", {
+      batchManaged: true,
+      silentStatus: true,
+      sourceSnapshot: { ...detected.source, bounds: detected.bounds, editBounds: detected.bounds, solid: true },
       detectedBounds: detected.bounds,
-      validateSource: detected.validateSource, replaceReference: replacing,
+      validateSource: detected.validateSource,
+      replaceReference: first,
       forceAsTarget: true,
-      autoSelection: { part: detectedPart, autoInsert: runAfterDetection }
+      autoSelection: { part: "clothes", autoInsert: false }
     });
-    if (!captured) throw new Error("无法截取完整修复区域，请重新识别或扩大画布");
+    if (!captured) throw new Error("无法截取完整服装选区，请确认图一对应的 Photoshop 原图仍打开");
     elements.precisionPlacement.checked = true;
     elements.maskFeatherEnabled.checked = true;
     elements.aspectRatio.value = "auto";
     elements.generationCount.value = "1";
+    setPromptValue(prompt);
+    updatePromptCount();
     syncIslandSelects();
     updateResolvedSize();
-    setStatus("success", "已框住" + PART_LABELS[detectedPart],
-      detected.ratio + " · " + detected.bounds.width + "×" + detected.bounds.height + " 原像素；羽化约占选框 20%");
+    autoOutfitSetupSignature = currentAutoOutfitSetupSignature();
+    const mapping = detected.assignments.map((assignment) => {
+      const refs = assignment.referenceIndexes.map((index) => `图${["一", "二", "三", "四", "五", "六"][index - 1] || index}`).join("、");
+      return `${PART_LABELS[assignment.part]}←${refs}`;
+    }).join("；");
+    setStatus("success", "服装已自动识别并框选", `${mapping}。替换提示词已填入；检查后点击“运行”生成，不会自动扣费`);
   } catch (error) {
-    setStatus("error", "自动修图准备失败", error.message || error);
-  } finally { state.capturing = false; updateControls(); }
-  if (captured && runAfterDetection) {
-    await handleRun({
-      skipPromptOptimization: true,
-      promptOverride: defaultRepairPrompt(detectedPart),
-      referencesOverride: matchedHeadReferences ? [captured, ...matchedHeadReferences] : undefined
-    });
+    setStatus("error", "服装参考图识别失败", error.message || error);
+  } finally {
+    state.capturing = false;
+    autoOutfitSetupRunning = false;
+    updateControls();
   }
+}
+
+function scheduleAutomaticOutfitSetup() {
+  if (autoOutfitSetupTimer !== null) clearTimeout(autoOutfitSetupTimer);
+  autoOutfitSetupTimer = setTimeout(async () => {
+    autoOutfitSetupTimer = null;
+    const deadline = Date.now() + 120000;
+    while (referenceMutationBlocked() && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    if (referenceMutationBlocked()) return;
+    try {
+      await handleAutomaticOutfitSetup();
+    } catch (error) {
+      setStatus("error", "服装参考图识别失败", error.message || error);
+    }
+  }, 250);
 }
 
 async function automaticallyInsertRepair(result) {
@@ -14422,14 +14459,8 @@ function bindEvents() {
     }
   };
 
-  elements.autoRepairDetect.addEventListener("click", () => {
-    handleAutomaticRepair(false).catch((error) => setStatus("error", "自动框选失败", error.message || error));
-  });
   elements.autoRepairExtractClothes.addEventListener("click", () => {
     extractClothesFromDocument().catch((error) => setStatus("error", "服装提取失败", error.message || error));
-  });
-  elements.autoRepairRun.addEventListener("click", () => {
-    handleAutomaticRepair(true).catch((error) => setStatus("error", "自动修图失败", error.message || error));
   });
 
   elements.statusClose.addEventListener("mousedown", (event) => {

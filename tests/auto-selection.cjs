@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { selectionPlan, garmentSelectionPlans, featherMaskInward, featherMaskPercent, decontaminateGarmentEdge, refineGarmentMatte, classifyReference, resolveReferencePart } = require("../plugin/lib/auto-selection.js");
+const { selectionPlan, garmentSelectionPlans, featherMaskInward, featherMaskPercent, decontaminateGarmentEdge, refineGarmentMatte, classifyReference, resolveReferencePart, resolveGarmentAssignments, garmentReplacementPrompt } = require("../plugin/lib/auto-selection.js");
 
 const width = 20;
 const height = 20;
@@ -39,6 +39,20 @@ for (const plan of garmentPlans) assert.ok(plan.mask.bytes.some((value) => value
 assert.equal(garmentPlans.find((plan) => plan.part === "dress").mask.bytes.reduce((sum, value) => sum + (value > 0 ? 1 : 0), 0), 400000,
   "dress mask contains dress pixels only, not belt pixels");
 assert.throws(() => garmentSelectionPlans(new Uint8Array(width * height), width, height, 2000, 2000), /没有识别到上衣/);
+
+const combined = selectionPlan(outfit, width, height, 2000, 2000, ["lower", "upper"]);
+assert.deepEqual(combined.parts, ["lower", "upper"], "a single edit mask can cover multiple garment categories");
+assert.ok(combined.mask.bytes.some((value) => value === 255), "combined garment mask includes both detected categories");
+
+const assignments = resolveGarmentAssignments(["lower", "upper", "lower"]);
+assert.deepEqual(assignments, [
+  { part: "lower", referenceIndexes: [2, 4] },
+  { part: "upper", referenceIndexes: [3] }
+], "each garment category keeps the original reference-image numbering");
+const replacementPrompt = garmentReplacementPrompt(assignments);
+assert.match(replacementPrompt, /图一中的下装替换为图二、图四所示的下装/);
+assert.match(replacementPrompt, /图一中的上衣替换为图三所示的上衣/);
+assert.throws(() => resolveGarmentAssignments(["upper", null]), /图3未能明确识别/);
 
 const hardMask = new Uint8Array(1600);
 for (let y = 8; y < 32; y++) hardMask.fill(255, y * 40 + 8, y * 40 + 32);

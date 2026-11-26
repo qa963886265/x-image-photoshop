@@ -10,7 +10,7 @@ function classifyReference(labels) {
     if (value > 17) throw new Error("本地识别结果类别无效");
     counts[value]++;
   }
-  const ranked = [["head", PARTS.head], ["upper", PARTS.upper], ["lower", PARTS.lower], ["shoes", PARTS.shoes], ["clothes", [7]]]
+  const ranked = [["head", PARTS.head], ["upper", PARTS.upper], ["lower", PARTS.lower], ["dress", [7]], ["shoes", PARTS.shoes]]
     .map(([part, classes]) => ({ part, pixels: classes.reduce((sum, value) => sum + counts[value], 0) }))
     .sort((a, b) => b.pixels - a.pixels);
   const [first, second] = ranked;
@@ -29,17 +29,58 @@ function resolveReferencePart(parts) {
   return known[0];
 }
 
+function resolveGarmentAssignments(referenceParts, firstImageIndex = 2) {
+  if (!Array.isArray(referenceParts) || referenceParts.length < 1 || !Number.isInteger(firstImageIndex) || firstImageIndex < 2) {
+    throw new Error("至少需要一张服装参考图");
+  }
+  const supported = new Set(["upper", "lower", "dress", "shoes"]);
+  const assignments = [];
+  for (let index = 0; index < referenceParts.length; index += 1) {
+    const part = referenceParts[index];
+    if (!supported.has(part)) {
+      throw new Error(`图${firstImageIndex + index}未能明确识别为上衣、下装、连衣裙或鞋，请换用单品图`);
+    }
+    let assignment = assignments.find((item) => item.part === part);
+    if (!assignment) {
+      assignment = { part, referenceIndexes: [] };
+      assignments.push(assignment);
+    }
+    assignment.referenceIndexes.push(firstImageIndex + index);
+  }
+  return assignments;
+}
+
+function garmentReplacementPrompt(assignments) {
+  if (!Array.isArray(assignments) || !assignments.length) throw new Error("没有可用于换装的服装参考图");
+  const imageNames = ["一", "二", "三", "四", "五", "六", "七"];
+  const referenceName = (index) => `图${imageNames[index - 1] || index}`;
+  const mapping = assignments.map((assignment) => {
+    const target = PART_LABELS[assignment.part];
+    const sources = (assignment.referenceIndexes || []).map(referenceName).join("、");
+    if (!target || !sources) throw new Error("服装参考图对应关系无效");
+    return `将${referenceName(1)}中的${target}替换为${sources}所示的${target}，严格保持参考图的颜色、面料质感、版型、纹理图案、缝线、口袋及可辨认细节一致，不要重新设计或混合不同单品。`;
+  });
+  return [
+    `${referenceName(1)}是需要修图的原模特图，后续图片是对应的服装单品参考图。`,
+    ...mapping,
+    "只修改已自动框选的服装区域。保持原图人物身份、体型、姿势、手部动作、视角、构图、光线、背景及服装以外内容不变；保留自然穿着的褶皱和遮挡关系，服装准确贴合人体。不得添加参考图中没有的配饰、文字、标志或其他服装。"
+  ].join("\n");
+}
+
 function selectionPlan(labels, mapWidth, mapHeight, width, height, part) {
-  if (!Object.prototype.hasOwnProperty.call(PARTS, part)) throw new Error("请选择有效的识别区域");
+  const selectedParts = Array.isArray(part) ? [...new Set(part)] : [part];
+  if (!selectedParts.length || selectedParts.some((value) => !Object.prototype.hasOwnProperty.call(PARTS, value))) {
+    throw new Error("请选择有效的识别区域");
+  }
   if (![mapWidth, mapHeight, width, height].every(Number.isInteger) ||
       Math.min(mapWidth, mapHeight, width, height) < 1 ||
       mapWidth > 1024 || mapHeight > 1024 || labels.length !== mapWidth * mapHeight) throw new Error("识别结果尺寸无效");
-  const wanted = PARTS[part];
+  const wanted = new Set(selectedParts.flatMap((value) => PARTS[value]));
   let left = mapWidth, top = mapHeight, right = 0, bottom = 0, count = 0;
   for (let y = 0; y < mapHeight; y++) for (let x = 0; x < mapWidth; x++) {
     const value = labels[y * mapWidth + x];
     if (value > 17) throw new Error("本地识别结果类别无效");
-    if (!wanted.includes(value)) continue;
+    if (!wanted.has(value)) continue;
     count++;
     left = Math.min(left, x); top = Math.min(top, y);
     right = Math.max(right, x + 1); bottom = Math.max(bottom, y + 1);
@@ -78,12 +119,13 @@ function selectionPlan(labels, mapWidth, mapHeight, width, height, part) {
     for (let px = 0; px < cropWidth; px++) {
       const col = Math.min(mapWidth - 1, Math.floor((x + px + 0.5) * mapWidth / width));
       const label = labels[row * mapWidth + col];
-      if (wanted.includes(label) && (part === "head" || !protection[row * mapWidth + col])) {
+      if (wanted.has(label) && (selectedParts.includes("head") || !protection[row * mapWidth + col])) {
         bytes[py * cropWidth + px] = 255;
       }
     }
   }
-  return { bounds, target, ratio, part, mask: { bytes, width: cropWidth, height: cropHeight, bounds } };
+  return { bounds, target, ratio, part: selectedParts.length === 1 ? selectedParts[0] : selectedParts,
+    parts: selectedParts, mask: { bytes, width: cropWidth, height: cropHeight, bounds } };
 }
 
 function garmentSelectionPlans(labels, mapWidth, mapHeight, width, height) {
@@ -353,4 +395,4 @@ function createLocalSelectionClient({ folder, textFormat, launch, decodeBase64, 
   };
 }
 
-module.exports = { PROTOCOL, PARTS, PART_LABELS, classifyReference, resolveReferencePart, selectionPlan, garmentSelectionPlans, featherMaskInward, featherMaskPercent, decontaminateGarmentEdge, refineGarmentMatte, defaultRepairPrompt, createLocalSelectionClient };
+module.exports = { PROTOCOL, PARTS, PART_LABELS, classifyReference, resolveReferencePart, resolveGarmentAssignments, garmentReplacementPrompt, selectionPlan, garmentSelectionPlans, featherMaskInward, featherMaskPercent, decontaminateGarmentEdge, refineGarmentMatte, defaultRepairPrompt, createLocalSelectionClient };

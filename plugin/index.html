@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title></title>
-  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.58" />
+  <link rel="stylesheet" href="styles-v1.7.77.css?v=1.10.59" />
   <style>
     #referenceList > #referenceAddWrap {
       position: relative !important;
@@ -174,13 +174,8 @@
         </div>
         <div id="editorMorePanel" class="editor-more-panel is-hidden" role="region" aria-label="更多设置">
       <div class="auto-repair-controls" aria-label="自动修图">
-          <select id="autoRepairPart" aria-label="自动识别区域">
-            <option value="auto">自动识别</option><option value="head">头</option>
-            <option value="upper">上衣</option><option value="lower">下装</option><option value="shoes">鞋</option>
-          </select>
-          <button id="autoRepairDetect" class="action-button" type="button" title="仅本地识别选区，不生成、不计费">自动框选</button>
-          <button id="autoRepairExtractClothes" class="action-button" type="button" title="在原图像素位置创建可编辑服装蒙版，边缘羽化 5%">提取服装</button>
-          <button id="autoRepairRun" class="primary-button" type="button" title="请先添加参考图；自动框选、修图并精确回填一张">一键修图</button>
+          <button id="autoRepairExtractClothes" class="action-button" type="button" title="在原图像素位置创建可编辑服装蒙版，边缘羽化 5%">提取服装蒙版</button>
+          <span class="auto-outfit-status" aria-live="polite">参考图齐全后自动识别和框选</span>
         </div>
         <div class="parameter-row">
           <div class="parameter-field model-field">
@@ -826,6 +821,6 @@
       </div>
     </div>
 
-  <script src="main-v1.7.77.js?v=1.10.58"></script>
+  <script src="main-v1.7.77.js?v=1.10.59"></script>
   </body>
 </html>

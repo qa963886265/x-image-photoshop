@@ -28,6 +28,12 @@
   --shadow-soft: rgba(86, 68, 45, 0.14);
 }
 
+html {
+  color-scheme: light;
+  background-color: #84c9a0 !important;
+  forced-color-adjust: none;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -48,7 +54,7 @@ body {
   overflow-y: auto;
   scrollbar-width: none;
   color: var(--ink);
-  background-color: var(--island-green);
+  background-color: #84c9a0 !important;
   background-image:
     linear-gradient(rgba(132, 201, 160, 0.22), rgba(132, 201, 160, 0.22)),
     url("assets/animal-island-ui/images/content-bg.jpg");
@@ -58,6 +64,10 @@ body {
   font-size: 12px;
   font-weight: 500;
   -webkit-font-smoothing: antialiased;
+}
+
+#appShell {
+  color-scheme: light;
 }
 
 html::-webkit-scrollbar,
