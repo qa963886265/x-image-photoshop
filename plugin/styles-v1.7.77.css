@@ -15543,6 +15543,63 @@ body.is-library-workspace-active > .app-shell > #styleLibraryWorkspace > .style-
   margin-right: 0;
 }
 
+/* Preserve editor colors when Photoshop applies its dark native-control theme. */
+#editorWorkspace > .prompt-card .prompt-editor-actions > button,
+#editorWorkspace > .prompt-card .prompt-actions-row .utility-button,
+#editorWorkspace .island-select-trigger {
+  color-scheme: light !important;
+  forced-color-adjust: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+#editorWorkspace > .prompt-card .prompt-editor-actions > #run {
+  border-color: #079786 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: linear-gradient(180deg, #24d6c8 0%, #12b9ad 100%) !important;
+  background-color: #12b9ad !important;
+}
+
+#editorWorkspace > .prompt-card .prompt-editor-actions > #editorClear {
+  border-color: #d0a26b !important;
+  color: #805c33 !important;
+  -webkit-text-fill-color: #805c33 !important;
+  background: linear-gradient(180deg, #fff7e9 0%, #ffe2bd 100%) !important;
+  background-color: #ffe2bd !important;
+}
+
+#editorWorkspace > .prompt-card .prompt-editor-actions > #insert {
+  border-color: #659f65 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: linear-gradient(180deg, #95d99a 0%, #72bd78 100%) !important;
+  background-color: #72bd78 !important;
+}
+
+#editorWorkspace > .prompt-card .prompt-editor-actions > #autoRepairExtractClothes {
+  border-color: #d6a52f !important;
+  color: #654b2e !important;
+  -webkit-text-fill-color: #654b2e !important;
+  background: linear-gradient(180deg, #fff0a9 0%, #f7cd67 100%) !important;
+  background-color: #f7cd67 !important;
+}
+
+#editorWorkspace > .prompt-card .prompt-editor-actions > button:disabled,
+#editorWorkspace > .prompt-card .prompt-actions-row .utility-button:disabled,
+#editorWorkspace .island-select-control.is-disabled > .island-select-trigger {
+  opacity: 0.72 !important;
+  filter: none !important;
+}
+
+#editorWorkspace #editorMorePanel .island-select-trigger {
+  border-color: #b9d8ce !important;
+  color: #725d42 !important;
+  -webkit-text-fill-color: #725d42 !important;
+  background: #fffdf5 !important;
+  background-color: #fffdf5 !important;
+}
+
 select {
   -webkit-appearance: none !important;
   appearance: none !important;
