@@ -7172,10 +7172,7 @@ function renderSelectedResult() {
   elements.resultImage.classList.remove("is-hidden");
   elements.resultEmpty.classList.add("is-hidden");
   if (canInsertResultIntoCurrentDocument(result)) {
-    const supportsPrecisePlacement = hasPhotoshopTarget(result.snapshot);
-    elements.insert.textContent = result.insertedAt
-      ? (supportsPrecisePlacement && elements.precisionPlacement.checked ? "再次精确插入" : "再次插入")
-      : "插入图层";
+    elements.insert.textContent = result.insertedAt ? "直接插入" : "插入图层";
   } else {
     elements.insert.textContent = result.openedAt ? "再次在 PS 打开" : "在 PS 中打开";
   }
@@ -14285,7 +14282,7 @@ async function extractClothesFromDocument() {
       }
       executionContext.reportProgress({ value: 1, commandName: "服装提取完成" });
       return { documentTitle: document.title || document.name || "当前文档", layerNames: detected.garments.map((garment) => PART_LABELS[garment.part]) };
-    }, { commandName: "提取服装蒙版" });
+    }, { commandName: "提取服装" });
     setStatus("success", "服装蒙版已创建", `已在“${summary.documentTitle}”按原图像素创建服装图层和可编辑蒙版，边缘羽化 5%：${summary.layerNames.join("、")}`);
   } catch (error) {
     setStatus("error", "服装提取失败", error.message || error);

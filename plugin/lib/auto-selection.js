@@ -55,16 +55,12 @@ function garmentReplacementPrompt(assignments) {
   const imageNames = ["一", "二", "三", "四", "五", "六", "七"];
   const referenceName = (index) => `图${imageNames[index - 1] || index}`;
   const mapping = assignments.map((assignment) => {
-    const target = PART_LABELS[assignment.part];
+    const garment = { upper: "上衣", lower: "裤子", dress: "连衣裙", shoes: "鞋子" }[assignment.part];
     const sources = (assignment.referenceIndexes || []).map(referenceName).join("、");
-    if (!target || !sources) throw new Error("服装参考图对应关系无效");
-    return `将${referenceName(1)}中的${target}替换为${sources}所示的${target}，严格保持参考图的颜色、面料质感、版型、纹理图案、缝线、口袋及可辨认细节一致，不要重新设计或混合不同单品。`;
+    if (!garment || !sources) throw new Error("服装参考图对应关系无效");
+    return `将图一的${garment}替换为${sources}的${garment}，保持${sources}的颜色和细节一致性。`;
   });
-  return [
-    `${referenceName(1)}是需要修图的原模特图，后续图片是对应的服装单品参考图。`,
-    ...mapping,
-    "只修改已自动框选的服装区域。保持原图人物身份、体型、姿势、手部动作、视角、构图、光线、背景及服装以外内容不变；保留自然穿着的褶皱和遮挡关系，服装准确贴合人体。不得添加参考图中没有的配饰、文字、标志或其他服装。"
-  ].join("\n");
+  return mapping.join("\n");
 }
 
 function selectionPlan(labels, mapWidth, mapHeight, width, height, part) {

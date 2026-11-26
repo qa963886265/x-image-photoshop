@@ -50,8 +50,8 @@ assert.deepEqual(assignments, [
   { part: "upper", referenceIndexes: [3] }
 ], "each garment category keeps the original reference-image numbering");
 const replacementPrompt = garmentReplacementPrompt(assignments);
-assert.match(replacementPrompt, /图一中的下装替换为图二、图四所示的下装/);
-assert.match(replacementPrompt, /图一中的上衣替换为图三所示的上衣/);
+assert.match(replacementPrompt, /将图一的上衣替换为图三的上衣，保持图三的颜色和细节一致性。/);
+assert.match(replacementPrompt, /将图一的裤子替换为图二、图四的裤子，保持图二、图四的颜色和细节一致性。/);
 assert.throws(() => resolveGarmentAssignments(["upper", null]), /图3未能明确识别/);
 
 const hardMask = new Uint8Array(1600);

@@ -15531,6 +15531,14 @@ body.is-library-workspace-active > .app-shell > #styleLibraryWorkspace > .style-
   white-space: nowrap;
 }
 
+#editorWorkspace .prompt-editor-actions > #run {
+  flex-grow: 1.15;
+}
+
+#editorWorkspace .prompt-editor-actions > #autoRepairExtractClothes {
+  flex-grow: 1.15;
+}
+
 #editorWorkspace .prompt-editor-actions > button:last-child {
   margin-right: 0;
 }
@@ -15582,4 +15590,26 @@ body *::-webkit-scrollbar {
 @keyframes notification-update-progress {
   from { transform: translateX(-110%); }
   to { transform: translateX(340%); }
+}
+
+/* UXP may composite transparent roots as black in newer Photoshop builds. */
+html,
+body {
+  color-scheme: light !important;
+  background-color: #84c9a0 !important;
+  background-image: none !important;
+  forced-color-adjust: none !important;
+}
+
+body,
+body > .app-shell,
+body > #appShell,
+#appShell,
+.app-shell {
+  background-color: #84c9a0 !important;
+  background-image:
+    linear-gradient(rgba(132, 201, 160, 0.22), rgba(132, 201, 160, 0.22)),
+    url("assets/animal-island-ui/images/content-bg.jpg") !important;
+  background-position: center top !important;
+  background-size: cover !important;
 }
