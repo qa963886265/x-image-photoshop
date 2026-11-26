@@ -29,7 +29,7 @@ const API_CONFIG = Object.freeze({
 });
 
 const UPDATE_CONFIG = Object.freeze({
-  currentVersion: "1.10.62",
+  currentVersion: "1.10.63",
   latestReleaseApi: "https://updates.8.208.32.40.sslip.io/latest.json",
   releasesPage: "https://updates.8.208.32.40.sslip.io/",
   updaterFolder: "updater",
