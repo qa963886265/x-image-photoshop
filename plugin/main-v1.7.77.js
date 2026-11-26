@@ -738,7 +738,6 @@ function focusIslandOption(control, direction) {
 function openIslandSelect(select, control, focusOption) {
   if (!select || !control || select.disabled) return;
   closeAllIslandSelects(control);
-  if (select === elements.promptLibrary) setEditorMoreOpen(false);
   refreshIslandSelect(select, true);
   control.root.classList.add("is-open");
   control.menu.classList.remove("is-hidden");
@@ -14405,21 +14404,7 @@ async function automaticallyInsertRepair(result) {
   return await operation;
 }
 
-function setEditorMoreOpen(expanded) {
-  const toggle = document.getElementById("editorMoreToggle");
-  const panel = document.getElementById("editorMorePanel");
-  if (!toggle || !panel) return;
-  panel.classList.toggle("is-hidden", !expanded);
-  toggle.setAttribute("aria-expanded", String(expanded));
-}
-
 function bindEvents() {
-  const moreToggle = document.getElementById("editorMoreToggle");
-  moreToggle.addEventListener("click", () => {
-    const expanded = moreToggle.getAttribute("aria-expanded") !== "true";
-    closeAllIslandSelects(null);
-    setEditorMoreOpen(expanded);
-  });
   bindUxpCheckboxToggle(elements.precisionPlacementToggle, elements.precisionPlacement);
   bindUxpCheckboxToggle(elements.maskFeatherControl, elements.maskFeatherEnabled);
   bindUxpCheckboxToggle(elements.optimizePromptToggle, elements.optimizePromptBeforeRun);
